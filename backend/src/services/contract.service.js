@@ -112,6 +112,13 @@ async function getExpiringSoon(days = 30) {
 /**
  * Get contracts for multiple employees within a period (for payrun)
  */
+async function getContractsForPeriod(employeeIds, periodStart, periodEnd) {
+  return contractRepo.getActiveForEmployees(employeeIds, periodStart, periodEnd);
+}
+
+/**
+ * List all contracts
+ */
 async function listContracts(query = {}) {
   const result = await contractRepo.raw(
     `SELECT c.*, e.first_name, e.last_name, e.employee_code, s.name as structure_name 

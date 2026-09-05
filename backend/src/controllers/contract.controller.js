@@ -36,6 +36,11 @@ async function endContract(req, res) {
   sendSuccess(res, contract, 'Contract ended');
 }
 
+async function getExpiringSoon(req, res) {
+  const contracts = await contractService.getExpiringSoon(req.query.days || 30);
+  sendSuccess(res, contracts);
+}
+
 async function listContracts(req, res) {
   const contracts = await contractService.listContracts(req.query);
   sendSuccess(res, contracts);
