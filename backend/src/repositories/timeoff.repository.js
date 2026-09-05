@@ -112,6 +112,25 @@ class TimeOffRepository extends BaseRepository {
     );
     return result.rows[0];
   }
+
+  async listAll(employeeId = null, status = null) {
+    let sql = `SELECT t.*, e.first_name, e.last_name, e.employee_code, e.department
+               FROM timeoff_requests t
+               JOIN employees e ON e.id = t.employee_id
+               WHERE t.deleted_at IS NULL`;
+    const params = [];
+    if (employeeId) {
+      params.push(employeeId);
+      sql += ` AND t.employee_id = $${params.length}`;
+    }
+    if (status) {
+      params.push(status.toUpperCase());
+      sql += ` AND t.status = $${params.length}`;
+    }
+    sql += ` ORDER BY t.created_at DESC LIMIT 100`;
+    const result = await this.raw(sql, params);
+    return result.rows;
+  }
 }
 
 module.exports = new TimeOffRepository();

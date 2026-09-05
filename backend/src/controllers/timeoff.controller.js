@@ -41,10 +41,9 @@ async function getBalance(req, res) {
 }
 
 async function listRequests(req, res) {
-  const result = await timeoffService.getEmployeeRequests(
-    req.query.employee_id || req.user.userId, req.query
-  );
-  sendSuccess(res, result.rows, 'Requests retrieved', 200);
+  const employeeId = req.query.employee_id || (req.user.role === 'EMPLOYEE' ? req.user.userId : null);
+  const result = await timeoffService.getEmployeeRequests(employeeId, req.query);
+  sendSuccess(res, result, 'Requests retrieved', 200);
 }
 
 async function getPending(req, res) {

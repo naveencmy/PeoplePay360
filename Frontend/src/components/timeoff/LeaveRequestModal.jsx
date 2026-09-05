@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Modal, Button, Input, Select, AvatarBadge } from '@/components/ui';
-import { useApproveLeave, useRejectLeave, useTimeOffTypes } from '@/hooks/useTimeOff';
+import { useApproveLeave, useRejectLeave, useTimeOffTypes, useCreateLeaveRequest } from '@/hooks/useTimeOff';
 import { differenceInBusinessDays, parseISO } from 'date-fns';
 import { toast } from 'react-hot-toast';
 
 export default function LeaveRequestModal({ request, onClose }) {
   const isViewMode = !!request;
   const { data: types } = useTimeOffTypes();
+  const createMutation = useCreateLeaveRequest();
   const approveMutation = useApproveLeave();
   const rejectMutation = useRejectLeave();
   
@@ -37,11 +38,22 @@ export default function LeaveRequestModal({ request, onClose }) {
     ? differenceInBusinessDays(parseISO(formData.toDate), parseISO(formData.fromDate)) + 1 
     : 0;
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // Simulate create request
-    toast.success('Leave request submitted successfully');
-    onClose();
+    try {
+      await createMutation.mutateAsync({
+        employee_id: formData.employeeId,
+        leave_type: formData.typeId || 'PAID_LEAVE',
+        date_from: formData.fromDate,
+        date_to: formData.toDate,
+        duration: duration || 1,
+        reason: formData.reason,
+      });
+      toast.success('Leave request submitted successfully');
+      onClose();
+    } catch (err) {
+      toast.error(err.message || 'Failed to submit leave request');
+    }
   };
 
   const handleApprove = async () => {

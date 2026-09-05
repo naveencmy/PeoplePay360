@@ -56,26 +56,31 @@ const Table = ({
                 return (
                   <th 
                     key={key} 
+                    scope="col"
                     className={`px-6 py-3 font-medium tracking-wider ${col.sortable ? 'cursor-pointer hover:text-white' : ''}`}
                     onClick={() => col.sortable && onSort && onSort(key)}
                   >
                     <div className="flex items-center gap-1">
                       {label}
-                      {col.sortable && <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" /></svg>}
+                      {col.sortable && (
+                        <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
+                        </svg>
+                      )}
                     </div>
                   </th>
                 );
               })}
-              {rowActions.length > 0 && <th className="px-6 py-3 text-right">Actions</th>}
+              {rowActions.length > 0 && <th scope="col" className="px-6 py-3 text-right">Actions</th>}
             </tr>
           </thead>
-          <tbody>
+          <tbody className="divide-y divide-[rgba(255,255,255,0.08)]">
             {loading ? (
-              Array.from({ length: 5 }).map((_, rIdx) => (
-                <tr key={rIdx} className="border-b border-[rgba(255,255,255,0.08)]">
+              Array.from({ length: 5 }).map((_, idx) => (
+                <tr key={idx} className="border-b border-[rgba(255,255,255,0.08)] animate-pulse">
                   {columns.map((_, cIdx) => (
                     <td key={cIdx} className="px-6 py-4">
-                      <div className="h-4 bg-gray-700 rounded animate-pulse w-3/4"></div>
+                      <div className="h-4 bg-gray-700 rounded w-3/4"></div>
                     </td>
                   ))}
                   {rowActions.length > 0 && <td className="px-6 py-4"></td>}
@@ -100,21 +105,25 @@ const Table = ({
                   {rowActions.length > 0 && (
                     <td className="px-6 py-4 whitespace-nowrap text-right relative">
                       <button 
-                        className="text-gray-400 hover:text-white p-1 rounded hover:bg-gray-700"
+                        className="text-gray-400 hover:text-white p-2 rounded hover:bg-gray-700 min-w-[36px] min-h-[36px] inline-flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4F7CFF]"
                         onClick={(e) => toggleDropdown(e, rIdx)}
+                        aria-label="Row actions menu"
+                        aria-haspopup="menu"
+                        aria-expanded={activeDropdown === rIdx}
                       >
-                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
                         </svg>
                       </button>
                       {activeDropdown === rIdx && (
                         <>
                           <div className="fixed inset-0 z-10" onClick={(e) => { e.stopPropagation(); setActiveDropdown(null); }}></div>
-                          <div className="absolute right-6 mt-1 w-40 bg-[#161B22] border border-[rgba(255,255,255,0.08)] rounded shadow-lg z-20 py-1">
+                          <div className="absolute right-6 mt-1 w-40 bg-[#161B22] border border-[rgba(255,255,255,0.08)] rounded shadow-lg z-20 py-1" role="menu">
                             {rowActions.map((action, aIdx) => (
                               <button
                                 key={aIdx}
-                                className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-800 ${action.danger ? 'text-red-500' : 'text-gray-200'}`}
+                                role="menuitem"
+                                className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-800 ${action.danger ? 'text-red-400' : 'text-gray-200'}`}
                                 onClick={(e) => handleActionClick(e, action, row)}
                               >
                                 {action.label}

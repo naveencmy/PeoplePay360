@@ -152,17 +152,7 @@ async function getApprovedDays(employeeId, periodStart, periodEnd) {
  * Get time off requests for an employee
  */
 async function getEmployeeRequests(employeeId, queryParams = {}) {
-  const where = { employee_id: employeeId };
-  if (queryParams.status) where.status = queryParams.status;
-  if (queryParams.leave_type) where.leave_type = queryParams.leave_type;
-
-  return timeoffRepo.findAll({
-    where,
-    page: queryParams.page || 1,
-    limit: queryParams.limit || 20,
-    sortBy: 'created_at',
-    sortOrder: 'desc',
-  });
+  return timeoffRepo.listAll(employeeId, queryParams.status);
 }
 
 /**

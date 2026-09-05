@@ -7,6 +7,7 @@ const { payslipIdParamSchema } = require('../../models/payslip.model');
 const router = Router();
 router.use(authenticate);
 
+router.get('/', ctrl.listPayslips);
 router.get('/:id', validate({ params: payslipIdParamSchema }), ctrl.getPayslip);
 router.get('/:id/pdf', validate({ params: payslipIdParamSchema }), ctrl.downloadPDF);
 router.post('/:id/email', validate({ params: payslipIdParamSchema }), ctrl.emailPayslip);

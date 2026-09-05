@@ -33,23 +33,31 @@ const Modal = ({
   };
 
   const modalContent = (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-0">
+    <div 
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-0"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby={title ? 'modal-title' : undefined}
+    >
       <div 
-        className="fixed inset-0 bg-black bg-opacity-60 transition-opacity"
+        className="fixed inset-0 bg-black bg-opacity-70 transition-opacity"
         onClick={onClose}
+        aria-hidden="true"
       />
       
       <div 
-        className={`relative bg-[#161B22] border border-[rgba(255,255,255,0.08)] rounded-lg shadow-xl w-full ${sizes[size]} transform transition-all animate-in fade-in zoom-in-95 duration-200`}
+        className={`relative bg-[#161B22] border border-[rgba(255,255,255,0.08)] rounded-xl shadow-2xl w-full ${sizes[size]} transform transition-all animate-in fade-in zoom-in-95 duration-200 z-10`}
       >
         {title && (
           <div className="px-6 py-4 border-b border-[rgba(255,255,255,0.08)] flex items-center justify-between">
-            <h3 className="text-lg font-medium text-white">{title}</h3>
+            <h2 id="modal-title" className="text-lg font-semibold text-white">{title}</h2>
             <button 
+              type="button"
               onClick={onClose}
-              className="text-gray-400 hover:text-white focus:outline-none"
+              className="text-gray-400 hover:text-white p-2 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4F7CFF] min-w-[40px] min-h-[40px] flex items-center justify-center"
+              aria-label="Close dialog"
             >
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
@@ -61,7 +69,7 @@ const Modal = ({
         </div>
         
         {footer && (
-          <div className="px-6 py-4 border-t border-[rgba(255,255,255,0.08)] bg-[#0B0D10] bg-opacity-50 flex justify-end gap-3 rounded-b-lg">
+          <div className="px-6 py-4 border-t border-[rgba(255,255,255,0.08)] bg-[#0B0D10] flex justify-end gap-3 rounded-b-xl">
             {footer}
           </div>
         )}
@@ -72,6 +80,5 @@ const Modal = ({
   return createPortal(modalContent, document.body);
 };
 
-export { Modal };
-
 export default Modal;
+export { Modal };
