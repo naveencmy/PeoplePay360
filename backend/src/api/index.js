@@ -15,6 +15,7 @@ router.use('/salary', require('./routes/salary.routes'));
 router.use('/payruns', require('./routes/payrun.routes'));
 router.use('/payslips', require('./routes/payslip.routes'));
 router.use('/dashboard', require('./routes/dashboard.routes'));
+router.use('/docs', require('./routes/docs.routes'));
 
 // Health check
 router.get('/health', (_req, res) => {
