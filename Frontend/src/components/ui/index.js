@@ -1,4 +1,4 @@
-// Named exports for { Button, Input } destructuring style
+// Named exports for UI components
 export { default as Button } from './Button';
 export { default as Input } from './Input';
 export { default as Select } from './Select';
@@ -16,3 +16,7 @@ export { default as Banner } from './Banner';
 export { default as Skeleton } from './Skeleton';
 export { default as Kanban } from './Kanban';
 export { default as Chart } from './Chart';
+export { default as Drawer } from './Drawer';
+export { default as MoneyDisplay } from './MoneyDisplay';
+export { default as ThemeToggle } from './ThemeToggle';
+export { default as CommandSearch } from './CommandSearch';

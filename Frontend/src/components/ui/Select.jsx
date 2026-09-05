@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, forwardRef } from 'react';
+import { ChevronDown, Check, Search } from 'lucide-react';
 
-const Select = forwardRef(({
+export const Select = forwardRef(({
   label,
   options = [],
   error,
@@ -33,28 +34,33 @@ const Select = forwardRef(({
     return (
       <div className={`w-full ${className}`}>
         {label && (
-          <label htmlFor={selectId} className="block text-sm font-medium text-gray-300 mb-1">
+          <label htmlFor={selectId} className="block text-xs font-semibold uppercase tracking-wider text-text-muted mb-1.5">
             {label}
           </label>
         )}
-        <select
-          id={selectId}
-          ref={ref}
-          value={value}
-          onChange={onChange}
-          aria-invalid={Boolean(error)}
-          className={`w-full bg-[#161B22] border ${error ? 'border-red-500' : 'border-[rgba(255,255,255,0.08)]'} rounded-md py-2 px-3 text-sm text-gray-100 min-h-[42px] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#4F7CFF]`}
-          {...rest}
-        >
-          {children}
-        </select>
-        {error && <p role="alert" className="mt-1 text-sm text-red-400">{error}</p>}
+        <div className="relative">
+          <select
+            id={selectId}
+            ref={ref}
+            value={value}
+            onChange={onChange}
+            aria-invalid={Boolean(error)}
+            className={`w-full bg-surface-2 border ${error ? 'border-accent-rose' : 'border-border-medium hover:border-border-highlight'} rounded-input py-2 px-3.5 text-sm text-text-main focus:outline-none focus:ring-2 focus:ring-accent-blue/30 transition-all appearance-none pr-9`}
+            {...rest}
+          >
+            {children}
+          </select>
+          <div className="absolute inset-y-0 right-0 flex items-center px-2.5 pointer-events-none text-text-muted">
+            <ChevronDown className="w-4 h-4" />
+          </div>
+        </div>
+        {error && <p role="alert" className="mt-1 text-xs text-accent-rose font-medium">{error}</p>}
       </div>
     );
   }
 
-  const filteredOptions = options.filter((opt) =>
-    opt.label.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredOptions = options.filter(opt => 
+    (opt.label || opt.name || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const handleSelect = (optionValue) => {
@@ -74,10 +80,10 @@ const Select = forwardRef(({
   const getDisplayValue = () => {
     if (multiple) {
       if (!Array.isArray(value) || value.length === 0) return placeholder;
-      return options.filter((o) => value.includes(o.value)).map((o) => o.label).join(', ');
+      return options.filter((o) => value.includes(o.value)).map((o) => o.label || o.name).join(', ') || `${value.length} selected`;
     }
-    const selected = options.find((o) => o.value === value);
-    return selected ? selected.label : placeholder;
+    const selected = options.find(opt => opt.value === value);
+    return selected ? (selected.label || selected.name) : placeholder;
   };
 
   const handleKeyDown = (e) => {
@@ -92,58 +98,63 @@ const Select = forwardRef(({
   return (
     <div className={`relative w-full ${className}`} ref={containerRef}>
       {label && (
-        <label id={`${selectId}-label`} htmlFor={selectId} className="block text-sm font-medium text-gray-300 mb-1">
+        <label id={`${selectId}-label`} htmlFor={selectId} className="block text-xs font-semibold uppercase tracking-wider text-text-muted mb-1.5">
           {label}
         </label>
       )}
-      <div 
+      <button
         id={selectId}
+        type="button"
         role="combobox"
         aria-labelledby={label ? `${selectId}-label` : undefined}
         aria-expanded={isOpen}
         aria-haspopup="listbox"
-        className={`w-full bg-[#161B22] border ${error ? 'border-red-500' : 'border-[rgba(255,255,255,0.08)]'} rounded-md py-2 px-3 text-sm text-gray-100 cursor-pointer flex justify-between items-center min-h-[42px] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#4F7CFF]`}
         onClick={() => setIsOpen(!isOpen)}
         onKeyDown={handleKeyDown}
-        tabIndex={0}
+        className={`w-full flex items-center justify-between bg-surface-2 border ${error ? 'border-accent-rose' : 'border-border-medium hover:border-border-highlight'} rounded-input py-2 px-3.5 text-sm text-text-main focus:outline-none focus:ring-2 focus:ring-accent-blue/30 transition-all`}
       >
-        <span className="truncate">{getDisplayValue()}</span>
-        <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-        </svg>
-      </div>
-      {error && <p role="alert" className="mt-1 text-sm text-red-400">{error}</p>}
+        <span className={`truncate ${!value || (Array.isArray(value) && value.length === 0) ? 'text-text-muted' : 'text-text-main'}`}>
+          {getDisplayValue()}
+        </span>
+        <ChevronDown className={`w-4 h-4 text-text-muted shrink-0 transition-transform duration-150 ${isOpen ? 'rotate-180 text-accent-blue' : ''}`} />
+      </button>
 
       {isOpen && (
-        <div className="absolute z-10 w-full mt-1 bg-[#161B22] border border-[rgba(255,255,255,0.08)] rounded-md shadow-lg max-h-60 flex flex-col">
+        <div className="absolute z-40 w-full mt-1.5 bg-surface-3 border border-border-medium rounded-input shadow-dropdown overflow-hidden animate-scale-in">
           {searchable && (
-            <div className="p-2 border-b border-[rgba(255,255,255,0.08)]">
-              <input 
-                type="text" 
-                className="w-full bg-[#0B0D10] border border-[rgba(255,255,255,0.08)] rounded text-sm text-white px-2 py-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#4F7CFF]" 
+            <div className="p-2 border-b border-border-subtle flex items-center gap-2">
+              <Search className="w-3.5 h-3.5 text-text-muted shrink-0" />
+              <input
+                type="text"
                 placeholder="Search..."
-                value={searchTerm}
                 aria-label="Search options"
+                value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 onClick={(e) => e.stopPropagation()}
+                className="w-full bg-transparent text-xs text-text-main outline-none placeholder-text-muted"
               />
             </div>
           )}
-          <ul className="overflow-auto py-1" role="listbox" aria-labelledby={label ? `${selectId}-label` : undefined}>
+          <ul className="max-h-60 overflow-y-auto p-1 space-y-0.5" role="listbox" aria-labelledby={label ? `${selectId}-label` : undefined}>
             {filteredOptions.length === 0 ? (
-              <li className="px-3 py-2 text-sm text-gray-500 text-center" role="status">No options found</li>
+              <li className="p-2.5 text-center text-xs text-text-muted" role="status">No options found</li>
             ) : (
-              filteredOptions.map((option) => {
-                const isSelected = multiple ? Array.isArray(value) && value.includes(option.value) : value === option.value;
+              filteredOptions.map((opt) => {
+                const isSelected = multiple
+                  ? Array.isArray(value) && value.includes(opt.value)
+                  : value === opt.value;
                 return (
-                  <li 
-                    key={option.value}
+                  <li
+                    key={opt.value}
                     role="option"
                     aria-selected={isSelected}
-                    className={`px-3 py-2 text-sm cursor-pointer hover:bg-gray-800 ${isSelected ? 'bg-gray-800 text-[#4F7CFF] font-medium' : 'text-gray-200'}`}
-                    onClick={() => handleSelect(option.value)}
+                    onClick={() => handleSelect(opt.value)}
+                    className={`flex items-center justify-between px-3 py-1.5 text-xs rounded-md cursor-pointer transition-colors ${
+                      isSelected ? 'bg-accent-blue/15 text-accent-blue font-semibold' : 'text-text-main hover:bg-surface-2'
+                    }`}
                   >
-                    {option.label}
+                    <span>{opt.label || opt.name}</span>
+                    {isSelected && <Check className="w-3.5 h-3.5 text-accent-blue shrink-0" />}
                   </li>
                 );
               })
@@ -151,11 +162,11 @@ const Select = forwardRef(({
           </ul>
         </div>
       )}
+      {error && <p role="alert" className="mt-1 text-xs text-accent-rose font-medium">{error}</p>}
     </div>
   );
 });
 
 Select.displayName = 'Select';
 
-export { Select };
 export default Select;

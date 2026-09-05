@@ -29,17 +29,20 @@ export default function EmployeeKanban({ employees }) {
 
   const renderCard = (employee) => (
     <div 
-      className="bg-[#161B22] border border-[rgba(255,255,255,0.08)] p-4 rounded-lg shadow-sm cursor-pointer hover:border-[#4F7CFF]/50 transition"
+      className="bg-surface-2 border border-border-subtle hover:border-accent-blue/50 p-4 rounded-xl shadow-card cursor-pointer transition-all duration-150 hover:-translate-y-0.5"
       onClick={() => navigate(`/employees/${employee.id}`)}
     >
       <div className="flex items-start justify-between mb-3">
-        <AvatarBadge name={employee.name} imageUrl={employee.avatarUrl} />
-        <StatusPill status={employee.status} />
+        <AvatarBadge name={employee.name} imageUrl={employee.avatarUrl} size="sm" />
+        <StatusPill status={employee.status || 'Active'} />
       </div>
       <div className="mt-2">
-        <h4 className="font-medium text-gray-100">{employee.name}</h4>
-        <p className="text-sm text-gray-400 mt-1">{employee.jobPosition}</p>
-        <p className="text-xs text-gray-500 mt-1">{employee.department}</p>
+        <h4 className="font-semibold text-text-main text-sm">{employee.name}</h4>
+        <p className="text-xs text-text-muted mt-0.5">{employee.jobPosition || 'Employee'}</p>
+        <div className="mt-3 pt-2 border-t border-border-subtle flex items-center justify-between text-[11px] text-text-muted font-mono">
+          <span>{employee.employeeId || `EMP-${employee.id}`}</span>
+          <span className="capitalize">{employee.employeeType || 'Full-time'}</span>
+        </div>
       </div>
     </div>
   );
@@ -50,7 +53,7 @@ export default function EmployeeKanban({ employees }) {
         columns={columns} 
         onDragEnd={handleDragEnd} 
         renderCard={renderCard}
-        columnClassName="bg-black/20 rounded-xl p-3 border border-[rgba(255,255,255,0.05)] min-w-[300px]"
+        columnClassName="bg-surface-1/60 rounded-xl p-3.5 border border-border-subtle min-w-[280px]"
       />
     </div>
   );

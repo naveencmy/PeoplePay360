@@ -1,99 +1,83 @@
 import React from 'react';
+import { TrendingUp, TrendingDown } from 'lucide-react';
 
-const KPICard = ({
+export const KPICard = ({
   title,
   value,
   delta,
-  deltaLabel,
-  icon,
+  deltaLabel = 'vs last month',
+  icon: Icon,
+  subtext,
   subCaption,
   loading = false,
-  sparklineData = []
+  sparklineData = [],
+  className = ''
 }) => {
-  const isPositive = delta && delta.startsWith('+');
-  const isNegative = delta && delta.startsWith('-');
-  
-  let deltaColor = 'text-gray-400';
-  let DeltaIcon = null;
-
-  if (isPositive) {
-    deltaColor = 'text-green-400';
-    DeltaIcon = () => <span className="mr-1">▲</span>;
-  } else if (isNegative) {
-    deltaColor = 'text-red-400';
-    DeltaIcon = () => <span className="mr-1">▼</span>;
-  }
-
-  const renderSparkline = () => {
-    if (!sparklineData || sparklineData.length < 2) return null;
-    
-    const min = Math.min(...sparklineData);
-    const max = Math.max(...sparklineData);
-    const range = max - min || 1;
-    
-    const width = 100;
-    const height = 30;
-    
-    const points = sparklineData.map((val, i) => {
-      const x = (i / (sparklineData.length - 1)) * width;
-      const y = height - ((val - min) / range) * height;
-      return `${x},${y}`;
-    }).join(' ');
-
-    const strokeColor = isNegative ? '#F87171' : '#4ADE80';
-
-    return (
-      <svg className="w-full h-10 mt-4 overflow-visible" viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none">
-        <polyline
-          fill="none"
-          stroke={strokeColor}
-          strokeWidth="2"
-          points={points}
-        />
-      </svg>
-    );
-  };
+  const isPositive = delta && String(delta).startsWith('+');
+  const isNegative = delta && String(delta).startsWith('-');
 
   return (
-    <div className="bg-[#161B22] border border-[rgba(255,255,255,0.08)] rounded-lg p-5 flex flex-col relative overflow-hidden">
-      <div className="flex justify-between items-start">
-        <div className="flex flex-col">
-          <p className="text-sm font-medium text-gray-400">{title}</p>
-          {loading ? (
-            <div className="h-8 bg-gray-700 rounded w-24 mt-2 animate-pulse"></div>
-          ) : (
-            <h3 className="text-2xl font-bold text-white mt-1">{value}</h3>
-          )}
-        </div>
-        {icon && (
-          <div className="p-2 bg-[#0B0D10] rounded-md text-[#4F7CFF]">
-            {icon}
+    <div className={`bg-surface-2 border border-border-subtle hover:border-border-medium rounded-card p-5 flex flex-col justify-between shadow-card hover:shadow-card-hover transition-all duration-150 relative overflow-hidden group ${className}`}>
+      {/* Top row: title + icon */}
+      <div className="flex items-center justify-between mb-3">
+        <span className="text-xs font-semibold uppercase tracking-wider text-text-muted">{title}</span>
+        {Icon && (
+          <div className="p-2 rounded-lg bg-surface-3 text-accent-blue border border-border-subtle group-hover:border-accent-blue/30 transition-colors">
+            <Icon className="w-4 h-4" />
           </div>
         )}
       </div>
 
-      {!loading && (delta || subCaption) && (
-        <div className="mt-4 flex items-center text-sm">
-          {delta && (
-            <span className={`font-medium flex items-center ${deltaColor}`}>
-              {DeltaIcon && <DeltaIcon />}
+      {/* Main Value */}
+      <div className="my-1">
+        {loading ? (
+          <div className="h-8 w-32 bg-surface-3 animate-pulse rounded-md"></div>
+        ) : (
+          <div className="text-2xl sm:text-3xl font-bold font-mono tracking-tight text-text-main tabular-nums">
+            {value}
+          </div>
+        )}
+      </div>
+
+      {/* Bottom row: delta or subtext */}
+      <div className="mt-2 flex items-center justify-between text-xs">
+        {delta ? (
+          <div className="flex items-center gap-1.5 font-medium">
+            <span className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[11px] font-mono ${
+              isPositive 
+                ? 'bg-accent-emerald/15 text-accent-emerald' 
+                : isNegative 
+                  ? 'bg-accent-rose/15 text-accent-rose' 
+                  : 'bg-surface-3 text-text-muted'
+            }`}>
+              {isPositive && <TrendingUp className="w-3 h-3" />}
+              {isNegative && <TrendingDown className="w-3 h-3" />}
               {delta}
             </span>
-          )}
-          {deltaLabel && (
-            <span className="text-gray-500 ml-2">{deltaLabel}</span>
-          )}
-          {subCaption && !deltaLabel && (
-            <span className="text-gray-500">{subCaption}</span>
-          )}
-        </div>
-      )}
-      
-      {!loading && sparklineData.length > 0 && renderSparkline()}
+            <span className="text-text-muted text-[11px]">{deltaLabel}</span>
+          </div>
+        ) : (subtext || subCaption) ? (
+          <span className="text-text-muted text-xs truncate">{subtext || subCaption}</span>
+        ) : null}
+
+        {/* Optional micro sparkline */}
+        {sparklineData && sparklineData.length > 2 && (
+          <div className="w-16 h-6 ml-auto">
+            <svg className="w-full h-full overflow-visible" viewBox="0 0 50 20">
+              <polyline
+                fill="none"
+                stroke={isNegative ? '#F43F5E' : '#10B981'}
+                strokeWidth="1.75"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                points={sparklineData.map((v, i) => `${(i / (sparklineData.length - 1)) * 50},${20 - (v / 100) * 18}`).join(' ')}
+              />
+            </svg>
+          </div>
+        )}
+      </div>
     </div>
   );
 };
-
-export { KPICard };
 
 export default KPICard;
