@@ -15,7 +15,7 @@ const envSchema = z.object({
   DB_NAME: z.string().default('peoplepay360'),
   DB_USER: z.string().default('postgres'),
   DB_PASSWORD: z.string().default('postgres'),
-  DB_SSL: z.coerce.boolean().default(false),
+  DB_SSL: z.union([z.boolean(), z.string()]).transform(v => v === true || v === 'true' || v === '1').default(false),
   DB_POOL_MIN: z.coerce.number().default(2),
   DB_POOL_MAX: z.coerce.number().default(10),
 
