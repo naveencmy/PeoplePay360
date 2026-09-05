@@ -3,11 +3,12 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { 
   Users, CalendarCheck, CalendarDays, WalletCards, SlidersHorizontal, 
   BrainCircuit, Bell, Search, ChevronDown, User, Shield, LogOut,
-  Sparkles, Menu, X, Plus
+  Sparkles, Menu, X, Plus, FileText, BarChart3
 } from 'lucide-react';
 import useAuthStore from '@/store/authStore';
 import ThemeToggle from '@/components/ui/ThemeToggle';
 import StatusPill from '@/components/ui/StatusPill';
+import Logo from '@/components/ui/Logo';
 
 export default function TopBar({ onOpenCommandSearch }) {
   const { user, logout } = useAuthStore();
@@ -31,19 +32,7 @@ export default function TopBar({ onOpenCommandSearch }) {
       {/* LEFT: Brand Logo */}
       <div className="flex items-center gap-6 lg:gap-8">
         <Link to="/dashboard" className="flex items-center gap-2.5 group">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-accent-blue to-accent-cyan p-0.5 shadow-sm group-hover:shadow-glow transition-all">
-            <div className="w-full h-full bg-surface-1 rounded-[7px] flex items-center justify-center font-bold text-xs text-accent-blue font-mono">
-              P3
-            </div>
-          </div>
-          <div className="flex flex-col">
-            <span className="font-bold text-sm tracking-tight text-text-main flex items-center gap-1.5">
-              PeoplePay<span className="text-accent-blue">360</span>
-            </span>
-            <span className="text-[9px] font-semibold text-text-muted tracking-widest uppercase -mt-0.5 hidden sm:block">
-              Enterprise
-            </span>
-          </div>
+          <Logo size="md" showText={true} />
         </Link>
 
         {/* CENTER: Primary Navigation */}
@@ -76,6 +65,19 @@ export default function TopBar({ onOpenCommandSearch }) {
               </Link>
             </div>
           </div>
+
+          {/* Contracts */}
+          <Link 
+            to="/contracts" 
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-colors ${
+              isActive('/contracts')
+                ? 'bg-accent-blue/10 text-accent-blue font-semibold'
+                : 'text-text-secondary hover:text-text-main hover:bg-surface-3'
+            }`}
+          >
+            <FileText className="w-4 h-4" />
+            <span>Contracts</span>
+          </Link>
 
           {/* Attendance */}
           <Link 
@@ -123,7 +125,7 @@ export default function TopBar({ onOpenCommandSearch }) {
           <div className="group relative">
             <button 
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-colors ${
-                isActive('/payruns') || isActive('/payslips') || isActive('/salary-structures') || isActive('/dashboard')
+                isActive('/payruns') || isActive('/payslips') || isActive('/salary-structures')
                   ? 'bg-accent-blue/10 text-accent-blue font-semibold'
                   : 'text-text-secondary hover:text-text-main hover:bg-surface-3'
               }`}
@@ -133,10 +135,6 @@ export default function TopBar({ onOpenCommandSearch }) {
               <ChevronDown className="w-3 h-3 text-text-muted transition-transform group-hover:rotate-180" />
             </button>
             <div className="absolute top-full left-0 mt-1 bg-white dark:bg-[#131B2A] border border-slate-200 dark:border-border-medium rounded-xl shadow-2xl py-1.5 min-w-[220px] hidden group-hover:block z-[100] animate-fade-in">
-              <Link to="/dashboard" className="block px-3.5 py-2 text-xs text-text-main hover:bg-slate-100 dark:hover:bg-surface-2 transition-colors">
-                <div className="font-medium">Dashboard</div>
-                <div className="text-[10px] text-text-muted">Financial KPIs & analytics</div>
-              </Link>
               <Link to="/payruns" className="block px-3.5 py-2 text-xs text-text-main hover:bg-slate-100 dark:hover:bg-surface-2 transition-colors">
                 <div className="font-medium">Payruns & Processing</div>
                 <div className="text-[10px] text-text-muted">Draft, computed & validated cycles</div>
@@ -151,6 +149,19 @@ export default function TopBar({ onOpenCommandSearch }) {
               </Link>
             </div>
           </div>
+
+          {/* Reports */}
+          <Link 
+            to="/dashboard" 
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-colors ${
+              isActive('/dashboard')
+                ? 'bg-accent-blue/10 text-accent-blue font-semibold'
+                : 'text-text-secondary hover:text-text-main hover:bg-surface-3'
+            }`}
+          >
+            <BarChart3 className="w-4 h-4" />
+            <span>Reports</span>
+          </Link>
 
           {/* Simulator */}
           <Link 

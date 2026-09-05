@@ -3,7 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { 
   ArrowLeft, Clock, FileText, Calendar, Save, Edit3, User, 
   Building, Mail, Phone, MapPin, CreditCard, ShieldCheck, Wallet, 
-  CheckCircle2, AlertCircle, Copy, Check
+  CheckCircle2, AlertCircle, Copy, Check, Layers
 } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { useEmployee, useUpdateEmployee } from '@/hooks/useEmployees';
@@ -174,6 +174,12 @@ export default function EmployeeDetailPage() {
               <Button variant="outline" size="sm" className="gap-1.5 bg-surface-3/50 text-xs">
                 <Calendar size={13} className="text-accent-emerald" />
                 <span>Attendance</span>
+              </Button>
+            </Link>
+            <Link to={`/time-off/allocations?employee_id=${id}`}>
+              <Button variant="outline" size="sm" className="gap-1.5 bg-surface-3/50 text-xs">
+                <Layers size={13} className="text-accent-cyan" />
+                <span>Allocations</span>
               </Button>
             </Link>
             <Link to={`/payslips?employee_id=${id}`}>

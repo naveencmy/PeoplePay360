@@ -6,6 +6,7 @@ import { StatusPill } from '@/components/ui/StatusPill';
 import { Button } from '@/components/ui/Button';
 import PageHeader from '@/components/layout/PageHeader';
 import EmptyState from '@/components/ui/EmptyState';
+import Logo from '@/components/ui/Logo';
 import toast from 'react-hot-toast';
 
 function formatINR(val) {
@@ -127,12 +128,8 @@ export const PayslipDetailPage = () => {
       <div className="bg-surface-2 border border-border-subtle rounded-2xl p-6 sm:p-10 shadow-card max-w-4xl mx-auto space-y-8">
         {/* Document Letterhead */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-6 border-b border-border-subtle">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-accent-blue to-accent-cyan p-0.5 shadow-sm">
-              <div className="w-full h-full bg-surface-1 rounded-[10px] flex items-center justify-center font-bold text-base text-accent-blue font-mono">
-                P3
-              </div>
-            </div>
+          <div className="flex items-center gap-3.5">
+            <Logo size="xl" className="shrink-0" />
             <div>
               <h2 className="text-lg font-bold tracking-tight text-text-main">
                 PeoplePay360 Global Technologies Pvt. Ltd.

@@ -7,6 +7,7 @@ import {
   Mail, LockKeyhole, Eye, EyeOff, CircleAlert,
   Sun, Moon, ArrowLeft, CheckCircle2
 } from 'lucide-react';
+import Logo from '@/components/ui/Logo';
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -164,9 +165,7 @@ export default function LoginPage() {
       <main className="w-full max-w-[420px] mx-auto z-10 py-6">
         {/* Brand Lockup */}
         <div className="flex flex-col items-center text-center mb-6">
-          <div className="w-9 h-9 rounded-xl bg-blue-600 text-white font-mono font-bold text-sm flex items-center justify-center shadow-sm mb-3">
-            P3
-          </div>
+          <Logo size="xl" className="mb-2" />
           <div className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">
             PeoplePay<span className="text-blue-600 dark:text-blue-500">360</span>
           </div>
