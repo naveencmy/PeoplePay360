@@ -1,12 +1,4 @@
-/**
- * ═══════════════════════════════════════════════════════════════════════════
- * COMPUTATION ENGINE UNIT TESTS
- * Tests the crown jewel: DAG dependency graph, topological sort, 
- * safe formula evaluation, and the full computation pipeline.
- * 15+ test cases covering all edge cases.
- * ═══════════════════════════════════════════════════════════════════════════
- */
-
+mṁ
 const {
   buildDependencyGraph,
   topologicalSort,
@@ -175,16 +167,16 @@ describe('Variable Extraction', () => {
 describe('Dependency Graph', () => {
   test('builds correct DAG from rules', () => {
     const { adjacency, inDegree } = buildDependencyGraph(BASIC_STRUCTURE);
-    
+
     // BASIC has no dependencies
     expect(inDegree.get('BASIC')).toBe(0);
-    
+
     // HRA depends on BASIC
     expect(inDegree.get('HRA')).toBe(1);
-    
+
     // GROSS depends on BASIC, HRA, DA
     expect(inDegree.get('GROSS')).toBe(3);
-    
+
     // NET depends on GROSS, PF, PT
     expect(inDegree.get('NET')).toBe(3);
   });
@@ -192,7 +184,7 @@ describe('Dependency Graph', () => {
   test('extracts correct dependencies', () => {
     const grossRule = BASIC_STRUCTURE.find((r) => r.code === 'GROSS');
     const deps = getDependencies(grossRule, BASIC_STRUCTURE);
-    
+
     expect(deps).toContain('BASIC');
     expect(deps).toContain('HRA');
     expect(deps).toContain('DA');
@@ -204,18 +196,18 @@ describe('Topological Sort', () => {
   test('sorts rules in valid execution order', () => {
     const sorted = topologicalSort(BASIC_STRUCTURE);
     const codes = sorted.map((r) => r.code);
-    
+
     // BASIC must come before HRA, DA
     expect(codes.indexOf('BASIC')).toBeLessThan(codes.indexOf('HRA'));
     expect(codes.indexOf('BASIC')).toBeLessThan(codes.indexOf('DA'));
-    
+
     // HRA, DA must come before GROSS
     expect(codes.indexOf('HRA')).toBeLessThan(codes.indexOf('GROSS'));
     expect(codes.indexOf('DA')).toBeLessThan(codes.indexOf('GROSS'));
-    
+
     // GROSS must come before NET
     expect(codes.indexOf('GROSS')).toBeLessThan(codes.indexOf('NET'));
-    
+
     // PF must come before NET
     expect(codes.indexOf('PF')).toBeLessThan(codes.indexOf('NET'));
   });
@@ -225,7 +217,7 @@ describe('Topological Sort', () => {
       { id: '1', code: 'A', sequence: 1, computation_type: 'PERCENTAGE', computation_basis: 'B', amount: 0.5, active: true },
       { id: '2', code: 'B', sequence: 2, computation_type: 'PERCENTAGE', computation_basis: 'A', amount: 0.5, active: true },
     ];
-    
+
     expect(() => topologicalSort(cyclicRules)).toThrow(/Circular dependency/);
   });
 
@@ -238,7 +230,7 @@ describe('Topological Sort', () => {
       id: '1', code: 'BASIC', sequence: 1, computation_type: 'FIXED',
       amount: 50000, active: true, computation_basis: null, formula: null, condition: null,
     }];
-    
+
     const sorted = topologicalSort(singleRule);
     expect(sorted).toHaveLength(1);
     expect(sorted[0].code).toBe('BASIC');
@@ -282,7 +274,7 @@ describe('Rule Execution', () => {
   test('executes FIXED rule', () => {
     const context = buildContext(MOCK_EMPLOYEE, MOCK_CONTRACT, MOCK_ATTENDANCE, 0, '2026-09-01', '2026-09-30');
     const rule = BASIC_STRUCTURE.find((r) => r.code === 'BASIC');
-    
+
     const result = executeRule(rule, context);
     expect(result).toBeGreaterThan(0);
     // Pro-rated: 50000 * (worked_days / total_working_days)
@@ -292,10 +284,10 @@ describe('Rule Execution', () => {
     const context = buildContext(MOCK_EMPLOYEE, MOCK_CONTRACT, MOCK_ATTENDANCE, 0, '2026-09-01', '2026-09-30');
     context.rules.BASIC = 50000;
     context.variables.BASIC = 50000;
-    
+
     const rule = BASIC_STRUCTURE.find((r) => r.code === 'HRA');
     const result = executeRule(rule, context);
-    
+
     expect(result).toBe(25000); // 50% of BASIC
   });
 
@@ -305,23 +297,23 @@ describe('Rule Execution', () => {
     context.rules.HRA = 25000;
     context.rules.DA = 5000;
     context.variables = { ...context.rules };
-    
+
     const rule = BASIC_STRUCTURE.find((r) => r.code === 'GROSS');
     const result = executeRule(rule, context);
-    
+
     expect(result).toBe(80000); // BASIC + HRA + DA
   });
 
   test('respects conditions (skips when false)', () => {
     const context = buildContext(MOCK_EMPLOYEE, { ...MOCK_CONTRACT, wage: 0 }, MOCK_ATTENDANCE, 0, '2026-09-01', '2026-09-30');
-    
+
     const ruleWithCondition = {
       ...BASIC_STRUCTURE[0],
       condition: 'contract.wage > 0',
       computation_type: 'FIXED',
       amount: 50000,
     };
-    
+
     const result = executeRule(ruleWithCondition, context);
     expect(result).toBe(0); // Condition failed, so 0
   });
@@ -352,16 +344,16 @@ describe('Full Computation Pipeline', () => {
 
     // Gross should be positive
     expect(result.gross).toBeGreaterThan(0);
-    
+
     // Net should be positive (gross - deductions)
     expect(result.net).toBeGreaterThan(0);
-    
+
     // Net should be less than gross (deductions exist)
     expect(result.net).toBeLessThan(result.gross);
-    
+
     // Total deductions should be positive
     expect(result.total_deductions).toBeGreaterThan(0);
-    
+
     // Lines should have entries for each visible rule
     expect(result.lines.length).toBeGreaterThanOrEqual(5);
   });
@@ -433,7 +425,7 @@ describe('Full Computation Pipeline', () => {
 
     expect(result.computation_log).toBeDefined();
     expect(result.computation_log.length).toBe(BASIC_STRUCTURE.length);
-    
+
     const codes = result.computation_log.map((l) => l.code);
     expect(codes).toContain('BASIC');
     expect(codes).toContain('HRA');
@@ -452,9 +444,9 @@ describe('Edge Cases', () => {
     const context = buildContext(MOCK_EMPLOYEE, MOCK_CONTRACT, MOCK_ATTENDANCE, 0, '2026-09-01', '2026-09-30');
     context.rules.BASIC = 50000;
     context.variables.BASIC = 50000;
-    
+
     const result = executeRule(pfRule, context);
-    
+
     // min(50000 * 0.12, 1800) = min(6000, 1800) = 1800
     expect(result).toBe(1800);
   });
