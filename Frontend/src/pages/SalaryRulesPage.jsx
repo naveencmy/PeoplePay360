@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Plus, LayoutGrid, Network, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Plus, LayoutGrid, Network, AlertCircle, ShieldAlert, Sparkles, ChevronRight } from 'lucide-react';
 import { useSalaryRules, useValidateGraph } from '@/hooks/useSalary';
 import PageHeader from '@/components/layout/PageHeader';
 import { Button } from '@/components/ui/Button';
 import { StatusPill } from '@/components/ui/StatusPill';
 import { SalaryRuleFormModal } from '@/components/salary/SalaryRuleFormModal';
 import { SalaryRuleGraph } from '@/components/salary/SalaryRuleGraph';
+import EmptyState from '@/components/ui/EmptyState';
 
 export const SalaryRulesPage = () => {
   const { structureId } = useParams();
@@ -15,7 +16,7 @@ export const SalaryRulesPage = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedRule, setSelectedRule] = useState(null);
 
-  const { data: rules, isLoading } = useSalaryRules(structureId);
+  const { data: rules = [], isLoading } = useSalaryRules(structureId);
   const { data: graphValidation } = useValidateGraph(structureId);
 
   const hasCircularDependency = graphValidation?.hasCycle;
@@ -27,107 +28,154 @@ export const SalaryRulesPage = () => {
 
   const getCategoryColor = (category) => {
     switch(category) {
-      case 'BASIC': return 'bg-blue-500/20 text-blue-400';
-      case 'ALLOWANCE': return 'bg-teal-500/20 text-teal-400';
-      case 'GROSS': return 'bg-purple-500/20 text-purple-400';
-      case 'DEDUCTION': return 'bg-red-500/20 text-red-400';
-      case 'NET': return 'bg-green-500/20 text-green-400';
-      default: return 'bg-gray-500/20 text-gray-400';
+      case 'BASIC': return 'bg-accent-blue/15 text-accent-blue border-accent-blue/30';
+      case 'ALLOWANCE': return 'bg-accent-cyan/15 text-accent-cyan border-accent-cyan/30';
+      case 'GROSS': return 'bg-accent-purple/15 text-accent-purple border-accent-purple/30';
+      case 'DEDUCTION': return 'bg-accent-rose/15 text-accent-rose border-accent-rose/30';
+      case 'NET': return 'bg-accent-emerald/15 text-accent-emerald border-accent-emerald/30';
+      default: return 'bg-surface-3 text-text-muted border-border-subtle';
     }
   };
 
   return (
-    <div className="p-6 space-y-6 flex flex-col h-full">
-      <div className="flex items-center gap-4">
-        <button 
-          onClick={() => navigate('/salary-structures')}
-          className="p-2 hover:bg-white/10 rounded-full transition-colors text-gray-400 hover:text-white"
-        >
-          <ArrowLeft className="w-5 h-5" />
-        </button>
-        <div className="flex-1">
-          <PageHeader 
-            title={`Salary Rules - ${rules?.[0]?.structureName || 'Loading...'}`} 
-            subtitle="Configure computation rules and formulas for this structure"
-          />
-        </div>
-        <div className="flex items-center gap-4">
-          <div className="flex bg-[#0B0D10] border border-white/10 rounded-lg p-1">
-            <button
-              onClick={() => setView('table')}
-              className={`px-3 py-1.5 rounded flex items-center gap-2 text-sm font-medium transition-colors ${view === 'table' ? 'bg-[#161B22] text-white shadow-sm' : 'text-gray-400 hover:text-white'}`}
+    <div className="space-y-6 pb-12 animate-fade-in flex flex-col h-full">
+      <PageHeader 
+        title={`Salary Engine Rules · Structure #${structureId}`} 
+        subtitle="Ordered execution rules, algebraic component formulas, and dependency graph"
+        breadcrumbs={[
+          { label: 'Payroll', to: '/payruns' },
+          { label: 'Salary Structures', to: '/salary-structures' },
+          { label: `Structure #${structureId}` }
+        ]}
+        actions={
+          <div className="flex items-center gap-3">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => navigate('/salary-structures')}
+              className="gap-1.5"
             >
-              <LayoutGrid className="w-4 h-4" />
-              Table
-            </button>
-            <button
-              onClick={() => setView('graph')}
-              className={`px-3 py-1.5 rounded flex items-center gap-2 text-sm font-medium transition-colors ${view === 'graph' ? 'bg-[#161B22] text-white shadow-sm' : 'text-gray-400 hover:text-white'}`}
-            >
-              <Network className="w-4 h-4" />
-              Graph
-            </button>
-          </div>
-          <Button onClick={() => { setSelectedRule(null); setIsModalOpen(true); }} className="bg-[#4F7CFF] hover:bg-blue-600">
-            <Plus className="w-4 h-4 mr-2" />
-            New Rule
-          </Button>
-        </div>
-      </div>
+              <ArrowLeft size={14} />
+              <span>Structures</span>
+            </Button>
 
+            {/* View Switcher */}
+            <div className="flex bg-surface-2 border border-border-subtle rounded-lg p-0.5">
+              <button
+                onClick={() => setView('table')}
+                className={`px-3 py-1.5 rounded-md flex items-center gap-1.5 text-xs font-semibold transition-colors ${
+                  view === 'table' ? 'bg-surface-1 text-accent-blue shadow-sm' : 'text-text-muted hover:text-text-main'
+                }`}
+              >
+                <LayoutGrid className="w-3.5 h-3.5" />
+                <span>Table</span>
+              </button>
+              <button
+                onClick={() => setView('graph')}
+                className={`px-3 py-1.5 rounded-md flex items-center gap-1.5 text-xs font-semibold transition-colors ${
+                  view === 'graph' ? 'bg-surface-1 text-accent-blue shadow-sm' : 'text-text-muted hover:text-text-main'
+                }`}
+              >
+                <Network className="w-3.5 h-3.5" />
+                <span>Dependency Graph</span>
+              </button>
+            </div>
+
+            <Button 
+              onClick={() => { setSelectedRule(null); setIsModalOpen(true); }} 
+              variant="primary" 
+              size="sm"
+              className="gap-1.5 shadow-sm"
+            >
+              <Plus className="w-4 h-4" />
+              <span>New Rule</span>
+            </Button>
+          </div>
+        }
+      />
+
+      {/* Circular Dependency Warning */}
       {hasCircularDependency && (
-        <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4 flex items-start gap-3">
-          <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
+        <div className="bg-accent-rose/10 border border-accent-rose/30 rounded-xl p-4 flex items-start gap-3.5 text-accent-rose">
+          <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
           <div>
-            <h3 className="text-red-400 font-medium">Circular dependency detected</h3>
-            <p className="text-red-400/80 text-sm mt-1">Resolve cyclic references in your formulas before using this structure in a payrun.</p>
+            <h3 className="font-bold text-xs uppercase tracking-wider">Circular Formula Dependency Detected</h3>
+            <p className="text-xs opacity-90 mt-0.5">
+              One or more formulas reference themselves indirectly. You must decouple cyclic parameters before running payroll.
+            </p>
           </div>
         </div>
       )}
 
-      <div className="flex-1 bg-[#161B22] rounded-lg border border-white/10 overflow-hidden min-h-[400px]">
+      {/* Main Rules Container */}
+      <div className="flex-1 bg-surface-2 rounded-2xl border border-border-subtle overflow-hidden shadow-card min-h-[460px]">
         {isLoading ? (
-          <div className="p-8 text-center text-gray-400">Loading rules...</div>
+          <div className="p-16 text-center text-text-muted flex flex-col items-center gap-3">
+            <div className="w-8 h-8 rounded-full border-2 border-accent-blue border-t-transparent animate-spin" />
+            <span className="text-xs">Loading computation rules...</span>
+          </div>
+        ) : !rules?.length ? (
+          <EmptyState 
+            icon={Sparkles}
+            title="No rules configured"
+            description="Add calculation rules (Basic, HRA, PF, Tax, Net) to build your salary formula."
+            actionLabel="Add First Rule"
+            onAction={() => { setSelectedRule(null); setIsModalOpen(true); }}
+          />
         ) : view === 'table' ? (
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="border-b border-white/10 text-gray-400 text-sm">
-                <th className="p-4 font-medium">Sequence</th>
-                <th className="p-4 font-medium">Rule Name</th>
-                <th className="p-4 font-medium">Code</th>
-                <th className="p-4 font-medium">Category</th>
-                <th className="p-4 font-medium">Computation Type</th>
-                <th className="p-4 font-medium">Formula/Amount</th>
-                <th className="p-4 font-medium text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rules?.map((rule) => (
-                <tr key={rule.id} className="border-b border-white/10 hover:bg-white/5 transition-colors text-gray-200">
-                  <td className="p-4 text-gray-500">{rule.sequence}</td>
-                  <td className="p-4 font-medium text-white">{rule.name}</td>
-                  <td className="p-4 font-mono text-sm">{rule.code}</td>
-                  <td className="p-4">
-                    <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${getCategoryColor(rule.category)}`}>
-                      {rule.category}
-                    </span>
-                  </td>
-                  <td className="p-4">{rule.computationType}</td>
-                  <td className="p-4 font-mono text-sm text-gray-400 truncate max-w-[200px]">
-                    {rule.formula || rule.amount || `${rule.percentage}% of ${rule.percentageOf}`}
-                  </td>
-                  <td className="p-4 text-right">
-                    <button 
-                      className="text-[#4F7CFF] hover:text-blue-400 text-sm font-medium mr-3"
-                      onClick={() => handleEdit(rule)}
-                    >
-                      Edit
-                    </button>
-                  </td>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse text-xs">
+              <thead>
+                <tr className="border-b border-border-subtle bg-surface-1 text-text-muted font-medium uppercase tracking-wider text-[11px]">
+                  <th className="py-3 px-4 w-12 text-center">Seq</th>
+                  <th className="py-3 px-4">Rule Name</th>
+                  <th className="py-3 px-4">Code</th>
+                  <th className="py-3 px-4">Category</th>
+                  <th className="py-3 px-4">Computation Type</th>
+                  <th className="py-3 px-4">Formula / Expression</th>
+                  <th className="py-3 px-4 text-right">Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-border-subtle">
+                {rules.map((rule, idx) => (
+                  <tr key={rule.id || idx} className="hover:bg-surface-3/50 transition-colors">
+                    <td className="py-3.5 px-4 text-center font-mono text-text-muted font-semibold">
+                      {rule.sequence || idx + 1}
+                    </td>
+                    <td className="py-3.5 px-4 font-semibold text-text-main">
+                      {rule.name}
+                    </td>
+                    <td className="py-3.5 px-4">
+                      <span className="font-mono text-xs px-2 py-0.5 rounded bg-surface-3 border border-border-subtle text-accent-blue font-bold">
+                        {rule.code}
+                      </span>
+                    </td>
+                    <td className="py-3.5 px-4">
+                      <span className={`px-2.5 py-0.5 rounded-md text-[10px] font-mono font-bold uppercase border ${getCategoryColor(rule.category)}`}>
+                        {rule.category}
+                      </span>
+                    </td>
+                    <td className="py-3.5 px-4 text-text-secondary capitalize">
+                      {rule.computationType || 'Formula'}
+                    </td>
+                    <td className="py-3.5 px-4 font-mono text-xs text-text-main max-w-xs truncate">
+                      <span className="bg-surface-1 px-2 py-1 rounded border border-border-subtle text-accent-cyan">
+                        {rule.formula || rule.amount || `${rule.percentage || 40}% of ${rule.percentageOf || 'BASIC'}`}
+                      </span>
+                    </td>
+                    <td className="py-3.5 px-4 text-right">
+                      <button 
+                        className="text-xs text-accent-blue font-semibold hover:underline"
+                        onClick={() => handleEdit(rule)}
+                      >
+                        Edit Rule
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         ) : (
           <SalaryRuleGraph structureId={structureId} rules={rules} onNodeClick={handleEdit} />
         )}

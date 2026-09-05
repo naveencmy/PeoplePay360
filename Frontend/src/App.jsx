@@ -23,6 +23,7 @@ import DashboardPage from './pages/DashboardPage';
 import SimulatorPage from './pages/SimulatorPage';
 import AdminUsersPage from './pages/AdminUsersPage';
 import MySpacePage from './pages/MySpacePage';
+import PayrollIntelligencePage from './pages/PayrollIntelligencePage';
 
 function LoadingFallback() {
   return (
@@ -62,6 +63,7 @@ export default function App() {
           <Route path="/payslips" element={<PayslipsPage />} />
           <Route path="/payslips/:id" element={<PayslipDetailPage />} />
           <Route path="/simulator" element={<SimulatorPage />} />
+          <Route path="/intelligence" element={<PayrollIntelligencePage />} />
           <Route path="/admin/users" element={<AdminUsersPage />} />
           <Route path="/my-space" element={<MySpacePage />} />
         </Route>

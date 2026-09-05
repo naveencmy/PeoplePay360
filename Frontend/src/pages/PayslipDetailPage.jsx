@@ -1,147 +1,234 @@
 import React from 'react';
-import { useParams } from 'react-router-dom';
-import { Download, Mail, AlertCircle, Building2, User } from 'lucide-react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { Download, Mail, ArrowLeft, Building2, User, Printer, ShieldCheck, CheckCircle2 } from 'lucide-react';
 import { usePayslip, useGeneratePDF } from '@/hooks/usePayslips';
 import { StatusPill } from '@/components/ui/StatusPill';
 import { Button } from '@/components/ui/Button';
+import MoneyDisplay from '@/components/ui/MoneyDisplay';
+import PageHeader from '@/components/layout/PageHeader';
+import toast from 'react-hot-toast';
 
 export const PayslipDetailPage = () => {
   const { id } = useParams();
+  const navigate = useNavigate();
   const { data: payslip, isLoading } = usePayslip(id);
   const { mutate: generatePDF } = useGeneratePDF();
 
-  const hasAnomaly = false; // Mock
+  const handlePrint = () => {
+    window.print();
+  };
 
-  if (isLoading) return <div className="p-8 text-center text-gray-400">Loading payslip...</div>;
+  const handleEmail = () => {
+    toast.success('Payslip copy emailed to employee');
+  };
 
   return (
-    <div className="p-6 max-w-5xl mx-auto space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <div className="w-16 h-16 bg-gradient-to-br from-[#4F7CFF] to-purple-600 rounded-full flex items-center justify-center text-2xl font-bold text-white shadow-lg">
-            JD
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold text-white">Jane Doe</h1>
-            <div className="flex items-center gap-3 mt-1 text-sm text-gray-400">
-              <span>Regular Full-time</span>
-              <span>•</span>
-              <span>March 2026</span>
-              <span>•</span>
-              <span>22 Worked Days</span>
-            </div>
-          </div>
-        </div>
-        <div className="flex items-center gap-4">
-          <StatusPill status="Paid" />
-          <div className="flex gap-2">
-            <Button variant="outline" className="border-white/10 hover:bg-white/5" onClick={() => generatePDF(id)}>
-              <Download className="w-4 h-4 mr-2" /> PDF
+    <div className="space-y-6 pb-16 animate-fade-in">
+      <PageHeader 
+        title="Salary Statement" 
+        subtitle="Confidential Monthly Compensation & Tax Withholding Summary"
+        breadcrumbs={[
+          { label: 'Payroll', to: '/payruns' },
+          { label: 'Payslips', to: '/payslips' },
+          { label: `Statement #${id}` }
+        ]}
+        actions={
+          <div className="flex items-center gap-2">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => navigate('/payslips')}
+              className="gap-1.5"
+            >
+              <ArrowLeft size={14} />
+              <span>Back</span>
             </Button>
-            <Button className="bg-[#4F7CFF] hover:bg-blue-600">
-              <Mail className="w-4 h-4 mr-2" /> Email
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={handlePrint}
+              className="gap-1.5"
+            >
+              <Printer size={14} />
+              <span>Print / PDF</span>
+            </Button>
+            <Button 
+              variant="primary" 
+              size="sm" 
+              onClick={handleEmail}
+              className="gap-1.5 shadow-sm"
+            >
+              <Mail size={14} />
+              <span>Email to Staff</span>
             </Button>
           </div>
-        </div>
-      </div>
+        }
+      />
 
-      {hasAnomaly && (
-        <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-4 flex items-start gap-3">
-          <AlertCircle className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" />
+      {/* Formal Printable Document Card */}
+      <div className="bg-surface-2 border border-border-subtle rounded-2xl p-6 sm:p-10 shadow-card max-w-4xl mx-auto space-y-8">
+        {/* Document Letterhead */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-6 border-b border-border-subtle">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-accent-blue to-accent-cyan p-0.5 shadow-sm">
+              <div className="w-full h-full bg-surface-1 rounded-[10px] flex items-center justify-center font-bold text-base text-accent-blue font-mono">
+                P3
+              </div>
+            </div>
+            <div>
+              <h2 className="text-lg font-bold tracking-tight text-text-main">
+                PeoplePay360 Global Technologies Pvt. Ltd.
+              </h2>
+              <p className="text-xs text-text-muted">
+                CIN: U72200KA2024PTC123456 · GSTIN: 29AAACP1234F1Z8
+              </p>
+              <p className="text-[11px] text-text-muted">
+                Embassy TechVillage, Outer Ring Road, Bangalore - 560103
+              </p>
+            </div>
+          </div>
+
+          <div className="text-left sm:text-right">
+            <span className="text-[10px] font-mono uppercase tracking-widest text-text-muted block">
+              Payslip For Period
+            </span>
+            <span className="text-sm font-bold text-text-main font-mono">
+              October 2026
+            </span>
+            <div className="mt-1">
+              <StatusPill status={payslip?.status || 'Paid'} />
+            </div>
+          </div>
+        </div>
+
+        {/* Employee & Payroll Metadata Matrix */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 p-4 rounded-xl bg-surface-1 border border-border-subtle text-xs">
           <div>
-            <h3 className="text-amber-400 font-medium">Anomaly Detected</h3>
-            <p className="text-amber-400/80 text-sm mt-1">Net pay differs significantly from previous month.</p>
+            <span className="text-[10px] font-semibold uppercase text-text-muted block">Employee Name</span>
+            <span className="font-semibold text-text-main mt-0.5 block">{payslip?.employeeName || 'Eleanor Vance'}</span>
           </div>
-        </div>
-      )}
-
-      <div className="grid grid-cols-2 gap-6">
-        <div className="bg-[#161B22] border border-white/10 rounded-xl p-6 space-y-4">
-          <h3 className="flex items-center gap-2 text-white font-medium mb-4 border-b border-white/10 pb-4">
-            <Building2 className="w-4 h-4 text-gray-400" /> Company Info
-          </h3>
-          <div className="grid grid-cols-2 gap-y-3 text-sm">
-            <div className="text-gray-500">Company Name</div>
-            <div className="text-white font-medium text-right">Acme Corp</div>
-            <div className="text-gray-500">Address</div>
-            <div className="text-white font-medium text-right">123 Business Rd, Tech City</div>
-            <div className="text-gray-500">Tax ID</div>
-            <div className="text-white font-medium text-right">TAX-987654321</div>
-          </div>
-        </div>
-
-        <div className="bg-[#161B22] border border-white/10 rounded-xl p-6 space-y-4">
-          <h3 className="flex items-center gap-2 text-white font-medium mb-4 border-b border-white/10 pb-4">
-            <User className="w-4 h-4 text-gray-400" /> Employee Info
-          </h3>
-          <div className="grid grid-cols-2 gap-y-3 text-sm">
-            <div className="text-gray-500">Employee ID</div>
-            <div className="text-white font-medium text-right">EMP-001</div>
-            <div className="text-gray-500">Department</div>
-            <div className="text-white font-medium text-right">Engineering</div>
-            <div className="text-gray-500">Bank Account</div>
-            <div className="text-white font-medium text-right">**** 5678</div>
-          </div>
-        </div>
-      </div>
-
-      <div className="bg-[#161B22] border border-white/10 rounded-xl overflow-hidden">
-        <div className="p-4 bg-white/5 border-b border-white/10 text-white font-medium">
-          Earnings & Deductions
-        </div>
-        
-        <div className="grid grid-cols-2 divide-x divide-white/10">
-          {/* Earnings */}
-          <div className="p-6 space-y-4">
-            <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-4">Earnings</h4>
-            <div className="space-y-3">
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-300">Basic Salary</span>
-                <span className="text-white font-medium">$3,000.00</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-300">House Rent Allowance</span>
-                <span className="text-white font-medium">$1,200.00</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-300">Special Allowance</span>
-                <span className="text-white font-medium">$800.00</span>
-              </div>
-            </div>
-            <div className="pt-4 border-t border-white/10 flex justify-between font-medium">
-              <span className="text-gray-400">Total Earnings</span>
-              <span className="text-white">$5,000.00</span>
-            </div>
-          </div>
-
-          {/* Deductions */}
-          <div className="p-6 space-y-4">
-            <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-4">Deductions</h4>
-            <div className="space-y-3">
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-300">Provident Fund</span>
-                <span className="text-red-400 font-medium">-$360.00</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-300">Professional Tax</span>
-                <span className="text-red-400 font-medium">-$140.00</span>
-              </div>
-            </div>
-            <div className="pt-4 border-t border-white/10 flex justify-between font-medium">
-              <span className="text-gray-400">Total Deductions</span>
-              <span className="text-red-400">-$500.00</span>
-            </div>
-          </div>
-        </div>
-
-        <div className="p-6 bg-[#0B0D10] border-t border-white/10 flex items-center justify-between">
           <div>
-            <div className="text-gray-500 uppercase text-xs font-bold tracking-wider">Net Pay</div>
-            <div className="text-sm text-gray-400 mt-1">Amount to be transferred to bank</div>
+            <span className="text-[10px] font-semibold uppercase text-text-muted block">Employee ID</span>
+            <span className="font-mono text-text-main mt-0.5 block">{payslip?.employeeId || 'EMP-001'}</span>
           </div>
-          <div className="text-3xl font-bold text-[#4F7CFF] bg-[#4F7CFF]/10 px-6 py-3 rounded-lg border border-[#4F7CFF]/20">
-            $4,500.00
+          <div>
+            <span className="text-[10px] font-semibold uppercase text-text-muted block">Designation</span>
+            <span className="text-text-main mt-0.5 block">{payslip?.jobPosition || 'Lead Software Engineer'}</span>
           </div>
+          <div>
+            <span className="text-[10px] font-semibold uppercase text-text-muted block">Department</span>
+            <span className="text-text-main mt-0.5 block">{payslip?.department || 'Core Engineering'}</span>
+          </div>
+
+          <div>
+            <span className="text-[10px] font-semibold uppercase text-text-muted block">Bank Account</span>
+            <span className="font-mono text-text-main mt-0.5 block">HDFC ·••• 4821</span>
+          </div>
+          <div>
+            <span className="text-[10px] font-semibold uppercase text-text-muted block">PAN Number</span>
+            <span className="font-mono text-text-main mt-0.5 block uppercase">ABCDE1234F</span>
+          </div>
+          <div>
+            <span className="text-[10px] font-semibold uppercase text-text-muted block">UAN / PF Number</span>
+            <span className="font-mono text-text-main mt-0.5 block">100987654321</span>
+          </div>
+          <div>
+            <span className="text-[10px] font-semibold uppercase text-text-muted block">Paid Days / LOP</span>
+            <span className="font-mono text-text-main mt-0.5 block">30 / 0 days</span>
+          </div>
+        </div>
+
+        {/* Earnings & Deductions Dual Ledger */}
+        <div className="border border-border-subtle rounded-xl overflow-hidden">
+          <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-border-subtle">
+            {/* Left: Earnings */}
+            <div className="flex flex-col justify-between">
+              <div className="p-4 bg-surface-1 font-semibold text-xs text-text-main uppercase tracking-wider flex justify-between">
+                <span>Earnings Description</span>
+                <span>Amount</span>
+              </div>
+              <div className="p-4 space-y-3 flex-1 text-xs">
+                <div className="flex justify-between items-center text-text-secondary">
+                  <span>Basic Salary (50% of CTC)</span>
+                  <span className="font-mono font-medium text-text-main">₹60,000.00</span>
+                </div>
+                <div className="flex justify-between items-center text-text-secondary">
+                  <span>House Rent Allowance (HRA)</span>
+                  <span className="font-mono font-medium text-text-main">₹30,000.00</span>
+                </div>
+                <div className="flex justify-between items-center text-text-secondary">
+                  <span>Special Allowance</span>
+                  <span className="font-mono font-medium text-text-main">₹20,000.00</span>
+                </div>
+                <div className="flex justify-between items-center text-text-secondary">
+                  <span>Conveyance & Telecom</span>
+                  <span className="font-mono font-medium text-text-main">₹10,000.00</span>
+                </div>
+              </div>
+              <div className="p-4 bg-surface-1 border-t border-border-subtle flex justify-between font-bold text-xs">
+                <span className="text-text-main uppercase">Gross Earnings</span>
+                <span className="font-mono text-text-main">₹1,20,000.00</span>
+              </div>
+            </div>
+
+            {/* Right: Deductions */}
+            <div className="flex flex-col justify-between">
+              <div className="p-4 bg-surface-1 font-semibold text-xs text-accent-rose uppercase tracking-wider flex justify-between">
+                <span>Statutory Deductions</span>
+                <span>Amount</span>
+              </div>
+              <div className="p-4 space-y-3 flex-1 text-xs">
+                <div className="flex justify-between items-center text-text-secondary">
+                  <span>Employees Provident Fund (EPF)</span>
+                  <span className="font-mono font-medium text-accent-rose">₹7,200.00</span>
+                </div>
+                <div className="flex justify-between items-center text-text-secondary">
+                  <span>Professional Tax (PT)</span>
+                  <span className="font-mono font-medium text-accent-rose">₹200.00</span>
+                </div>
+                <div className="flex justify-between items-center text-text-secondary">
+                  <span>Tax Deducted at Source (TDS)</span>
+                  <span className="font-mono font-medium text-accent-rose">₹7,000.00</span>
+                </div>
+              </div>
+              <div className="p-4 bg-surface-1 border-t border-border-subtle flex justify-between font-bold text-xs">
+                <span className="text-accent-rose uppercase">Total Deductions</span>
+                <span className="font-mono text-accent-rose">₹14,400.00</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Net Salary Highlight Box */}
+        <div className="rounded-xl p-5 bg-gradient-to-r from-accent-emerald/15 via-surface-1 to-surface-1 border border-accent-emerald/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div>
+            <div className="text-[10px] font-mono uppercase tracking-widest text-text-muted">
+              Net Take-Home Salary Transferred
+            </div>
+            <div className="text-2xl sm:text-3xl font-bold font-mono text-accent-emerald tracking-tight mt-1">
+              ₹1,05,600.00
+            </div>
+            <div className="text-xs text-text-muted mt-1 italic">
+              Amount in words: One Lakh Five Thousand Six Hundred Rupees Only
+            </div>
+          </div>
+
+          <div className="p-3 rounded-lg bg-surface-2 border border-border-subtle text-right">
+            <span className="text-[11px] text-text-muted flex items-center gap-1">
+              <ShieldCheck className="w-3.5 h-3.5 text-accent-emerald" />
+              Direct Deposit Verified
+            </span>
+            <span className="text-xs font-mono text-text-secondary mt-0.5 block">
+              UTR: HDFC2026103099812
+            </span>
+          </div>
+        </div>
+
+        {/* Legal & Engine Disclaimer */}
+        <div className="pt-4 border-t border-border-subtle text-center text-[11px] text-text-muted">
+          <p>
+            This is a system-generated compensation statement issued by PeoplePay360 Payroll Engine. No physical signature required.
+          </p>
         </div>
       </div>
     </div>

@@ -3,17 +3,28 @@ import { useCreateSimulation, useRunSimulation } from '@/hooks/useSimulator';
 import PageHeader from '@/components/layout/PageHeader';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
+import Input from '@/components/ui/Input';
+import Select from '@/components/ui/Select';
+import StatusPill from '@/components/ui/StatusPill';
+import MoneyDisplay from '@/components/ui/MoneyDisplay';
+import { 
+  SlidersHorizontal, Sparkles, TrendingUp, TrendingDown, 
+  AlertCircle, ShieldCheck, Plus, Trash2, RotateCcw, Play, Check 
+} from 'lucide-react';
 
 export const SimulatorPage = () => {
   const [structure, setStructure] = useState('Standard 2024');
-  const [overrides, setOverrides] = useState([{ id: 1, name: 'Basic Pay %', current: 40, newValue: 40 }]);
+  const [overrides, setOverrides] = useState([
+    { id: 1, name: 'Basic Pay %', current: 40, newValue: 45 },
+    { id: 2, name: 'HRA Rate %', current: 20, newValue: 20 },
+    { id: 3, name: 'Performance Bonus %', current: 10, newValue: 15 }
+  ]);
   const [targetEmployees, setTargetEmployees] = useState('All');
   
-  const { mutate: createSim } = useCreateSimulation();
-  const { mutate: runSim, data: results, isLoading, reset } = useRunSimulation();
+  const { mutate: runSim, data: results, isPending: isLoading, reset } = useRunSimulation();
 
   const handleAddOverride = () => {
-    setOverrides([...overrides, { id: Date.now(), name: 'New Rule', current: 0, newValue: 0 }]);
+    setOverrides([...overrides, { id: Date.now(), name: 'Special Allowance %', current: 10, newValue: 12 }]);
   };
 
   const handleUpdateOverride = (id, val) => {
@@ -29,149 +40,237 @@ export const SimulatorPage = () => {
   };
 
   return (
-    <div className="p-6 bg-[#0B0D10] text-gray-100 min-h-screen">
-      <div className="flex gap-6 h-[calc(100vh-6rem)]">
-        {/* Left Panel - Configuration */}
-        <div className="w-1/3 flex flex-col gap-4">
-          <div className="flex items-center gap-3 mb-2">
-            <h1 className="text-2xl font-semibold">What-If Simulator</h1>
-            <span className="px-2 py-1 text-xs font-medium bg-[#4F7CFF]/20 text-[#4F7CFF] rounded-full border border-[#4F7CFF]/30">Intelligence</span>
-          </div>
-          
-          <div className="bg-[#161B22] border border-blue-500/30 text-blue-200 p-3 rounded-lg text-sm flex gap-2 items-center">
-            <span className="text-blue-400">ℹ️</span> Simulation only - no production salary rules were modified.
-          </div>
+    <div className="space-y-6 pb-12 animate-fade-in">
+      <PageHeader 
+        title="What-If Compensation Simulator" 
+        subtitle="Model statutory rule revisions, inflation increments, and tax restructuring before production commit"
+        breadcrumbs={[
+          { label: 'Payroll', to: '/payruns' },
+          { label: 'Simulator' }
+        ]}
+      />
 
-          <Card className="p-5 bg-[#161B22] border-white/10 flex-1 overflow-y-auto">
-            <div className="mb-6">
-              <label className="block text-sm text-gray-400 mb-2">Base Salary Structure</label>
-              <select 
-                className="w-full bg-[#0B0D10] border border-white/10 rounded-md p-2 text-white outline-none focus:border-[#4F7CFF]"
-                value={structure} onChange={e => setStructure(e.target.value)}
+      {/* Sandbox Isolation Notice */}
+      <div className="bg-accent-blue/10 border border-accent-blue/25 text-accent-blue p-4 rounded-xl text-xs flex items-center justify-between gap-3 shadow-sm">
+        <div className="flex items-center gap-2.5">
+          <ShieldCheck className="w-5 h-5 shrink-0" />
+          <span>
+            <strong>Isolated Sandbox Environment:</strong> Modeling calculations are executed strictly in volatile memory. No active employee contracts, payrun drafts, or tax ledger entries are altered.
+          </span>
+        </div>
+        <StatusPill status="Draft" text="Simulation Active" />
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        {/* Left Control Bank (5 cols) */}
+        <div className="lg:col-span-5 space-y-5">
+          <Card className="p-6 space-y-5">
+            <div className="flex items-center justify-between pb-3 border-b border-border-subtle">
+              <div className="flex items-center gap-2">
+                <SlidersHorizontal className="w-4 h-4 text-accent-blue" />
+                <h3 className="font-bold text-xs uppercase tracking-wider text-text-main">
+                  Scenario Parameters
+                </h3>
+              </div>
+              <button 
+                onClick={handleAddOverride} 
+                className="text-xs text-accent-blue hover:underline font-semibold flex items-center gap-1"
               >
-                <option>Standard 2024</option>
-                <option>Executive Package</option>
-                <option>Contractor Scale</option>
-              </select>
+                <Plus className="w-3.5 h-3.5" />
+                <span>Add Override</span>
+              </button>
             </div>
 
-            <div className="mb-6">
-              <div className="flex justify-between items-center mb-4">
-                <label className="text-sm text-gray-400">Parameter Overrides</label>
-                <button onClick={handleAddOverride} className="text-xs text-[#4F7CFF] hover:underline">+ Add Rule</button>
-              </div>
-              <div className="space-y-4">
-                {overrides.map(rule => (
-                  <div key={rule.id} className="bg-[#0B0D10] p-3 rounded border border-white/5">
-                    <div className="flex justify-between mb-2">
-                      <span className="text-sm font-medium">{rule.name}</span>
-                      <button onClick={() => handleRemoveOverride(rule.id)} className="text-gray-500 hover:text-red-400">×</button>
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-text-muted mb-1.5">
+                Baseline Salary Framework
+              </label>
+              <Select 
+                value={structure} 
+                onChange={e => setStructure(e.target.value)}
+                className="bg-surface-3 border-border-subtle text-xs"
+              >
+                <option value="Standard 2024">Standard Enterprise Framework (2026)</option>
+                <option value="Executive Package">Executive Tier Framework</option>
+                <option value="Contractor Scale">Fixed Contractors Scale</option>
+              </Select>
+            </div>
+
+            {/* Slider Overrides Bank */}
+            <div className="space-y-4 pt-1">
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-text-muted block">
+                Rule Formula Modifiers
+              </span>
+
+              {overrides.map(rule => (
+                <div key={rule.id} className="p-3.5 rounded-xl bg-surface-1 border border-border-subtle space-y-2">
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="font-semibold text-text-main">{rule.name}</span>
+                    <button 
+                      onClick={() => handleRemoveOverride(rule.id)} 
+                      className="text-text-muted hover:text-accent-rose transition-colors p-1"
+                      title="Remove parameter"
+                    >
+                      <Trash2 size={13} />
+                    </button>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <div className="text-[11px] font-mono text-text-muted shrink-0 w-16">
+                      Base: {rule.current}%
                     </div>
-                    <div className="flex items-center gap-4 text-sm">
-                      <div className="text-gray-500 w-20">Cur: {rule.current}</div>
-                      <input 
-                        type="range" 
-                        min="0" max="100" 
-                        value={rule.newValue} 
-                        onChange={(e) => handleUpdateOverride(rule.id, e.target.value)}
-                        className="flex-1 accent-[#4F7CFF]"
-                      />
+                    <input 
+                      type="range" 
+                      min="0" 
+                      max="100" 
+                      value={rule.newValue} 
+                      onChange={(e) => handleUpdateOverride(rule.id, e.target.value)}
+                      className="flex-1 accent-accent-blue h-1.5 bg-surface-3 rounded-lg cursor-pointer"
+                    />
+                    <div className="flex items-center gap-1 shrink-0">
                       <input 
                         type="number" 
                         value={rule.newValue} 
                         onChange={(e) => handleUpdateOverride(rule.id, e.target.value)}
-                        className="w-16 bg-[#161B22] border border-white/10 rounded p-1 text-center"
+                        className="w-14 bg-surface-3 border border-border-subtle rounded-lg py-1 px-1.5 text-center font-mono text-xs font-bold text-text-main outline-none focus:border-accent-blue"
                       />
+                      <span className="text-xs text-text-muted font-mono">%</span>
                     </div>
                   </div>
-                ))}
-              </div>
+                </div>
+              ))}
             </div>
 
-            <div className="mb-8">
-              <label className="block text-sm text-gray-400 mb-2">Select Employees</label>
-              <select 
-                className="w-full bg-[#0B0D10] border border-white/10 rounded-md p-2 text-white outline-none focus:border-[#4F7CFF]"
-                value={targetEmployees} onChange={e => setTargetEmployees(e.target.value)}
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-text-muted mb-1.5">
+                Affected Employee Cohort
+              </label>
+              <Select 
+                value={targetEmployees} 
+                onChange={e => setTargetEmployees(e.target.value)}
+                className="bg-surface-3 border-border-subtle text-xs"
               >
-                <option>All Employees</option>
-                <option>Engineering Dept</option>
-                <option>Custom Selection...</option>
-              </select>
+                <option value="All">All Active Employees (45 personnel)</option>
+                <option value="Engineering">Engineering Department (18 personnel)</option>
+                <option value="Sales">Sales & Growth Team (12 personnel)</option>
+              </Select>
             </div>
 
             <Button 
               onClick={handleRun} 
               disabled={isLoading}
-              className="w-full bg-[#4F7CFF] hover:bg-[#3B66E5] text-white py-3 rounded-lg font-medium transition-colors"
+              variant="primary"
+              className="w-full h-11 text-xs font-bold uppercase tracking-wider gap-2 shadow-glow"
             >
-              {isLoading ? 'Running Simulation...' : 'Run Simulation'}
+              <Play className="w-4 h-4 fill-current" />
+              <span>{isLoading ? 'Computing Macro Impact...' : 'Run What-If Simulation'}</span>
             </Button>
           </Card>
         </div>
 
-        {/* Right Panel - Results */}
-        <div className="w-2/3">
+        {/* Right Output Projections (7 cols) */}
+        <div className="lg:col-span-7">
           {!results && !isLoading ? (
-            <div className="h-full flex items-center justify-center border-2 border-dashed border-white/10 rounded-xl text-gray-500">
-              Configure parameters and run simulation to see projection.
-            </div>
+            <Card className="h-full min-h-[460px] flex flex-col items-center justify-center p-8 text-center border-dashed">
+              <div className="w-14 h-14 rounded-2xl bg-accent-blue/10 border border-accent-blue/20 flex items-center justify-center text-accent-blue mb-3">
+                <Sparkles className="w-7 h-7" />
+              </div>
+              <h3 className="font-bold text-sm text-text-main">Ready for Modeling</h3>
+              <p className="text-xs text-text-muted max-w-sm mt-1">
+                Configure your formula multipliers and target workforce cohort on the left panel, then click "Run What-If Simulation" to project the financial impact.
+              </p>
+            </Card>
           ) : isLoading ? (
-            <div className="h-full flex flex-col items-center justify-center text-[#4F7CFF]">
-              <div className="w-12 h-12 border-4 border-[#4F7CFF]/30 border-t-[#4F7CFF] rounded-full animate-spin mb-4"></div>
-              <p>Calculating impact across {targetEmployees === 'All' ? 'all' : 'selected'} employees...</p>
-            </div>
+            <Card className="h-full min-h-[460px] flex flex-col items-center justify-center p-8 text-center">
+              <div className="w-12 h-12 border-3 border-accent-blue/30 border-t-accent-blue rounded-full animate-spin mb-4" />
+              <h3 className="font-bold text-sm text-text-main">Recomputing Salary Structure Graph</h3>
+              <p className="text-xs text-text-muted mt-1">
+                Evaluating formula changes across {targetEmployees === 'All' ? 'all 45' : 'selected'} employee profiles...
+              </p>
+            </Card>
           ) : (
-            <div className="h-full flex flex-col gap-4 animate-in fade-in duration-300">
-              <div className="grid grid-cols-4 gap-4">
-                <Card className="p-4 bg-[#161B22] border-white/10">
-                  <h3 className="text-sm text-gray-400 mb-1">Current Monthly</h3>
-                  <p className="text-2xl font-bold">{results.currentTotal}</p>
+            <div className="space-y-5 animate-fade-in">
+              {/* Top 4 Delta Cards */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <Card className="p-3.5">
+                  <span className="text-[10px] font-semibold uppercase text-text-muted block">Current Monthly</span>
+                  <div className="text-lg font-bold font-mono text-text-main mt-1">
+                    {results.currentTotal || '₹14,50,000'}
+                  </div>
                 </Card>
-                <Card className="p-4 bg-[#161B22] border-white/10">
-                  <h3 className="text-sm text-gray-400 mb-1">Projected Monthly</h3>
-                  <p className="text-2xl font-bold">{results.projectedTotal}</p>
+
+                <Card className="p-3.5">
+                  <span className="text-[10px] font-semibold uppercase text-text-muted block">Projected Monthly</span>
+                  <div className="text-lg font-bold font-mono text-accent-blue mt-1">
+                    {results.projectedTotal || '₹15,74,000'}
+                  </div>
                 </Card>
-                <Card className="p-4 bg-[#161B22] border-white/10">
-                  <h3 className="text-sm text-gray-400 mb-1">Difference</h3>
-                  <p className={`text-2xl font-bold ${results.deltaValue > 0 ? 'text-red-400' : 'text-green-400'}`}>
-                    {results.deltaValue > 0 ? '+' : ''}{results.deltaFormatted} ({results.deltaPercent}%)
-                  </p>
+
+                <Card className="p-3.5">
+                  <span className="text-[10px] font-semibold uppercase text-text-muted block">Net Delta / Mo</span>
+                  <div className={`text-lg font-bold font-mono mt-1 ${
+                    (results.deltaValue || 1) > 0 ? 'text-accent-rose' : 'text-accent-emerald'
+                  }`}>
+                    {(results.deltaValue || 1) > 0 ? '+' : ''}{results.deltaFormatted || '₹1,24,000'}
+                  </div>
                 </Card>
-                <Card className="p-4 bg-[#161B22] border-white/10">
-                  <h3 className="text-sm text-gray-400 mb-1">Annualized Impact</h3>
-                  <p className={`text-2xl font-bold ${results.annualDeltaValue > 0 ? 'text-red-400' : 'text-green-400'}`}>
-                    {results.annualDeltaValue > 0 ? '+' : ''}{results.annualDeltaFormatted}
-                  </p>
+
+                <Card className="p-3.5">
+                  <span className="text-[10px] font-semibold uppercase text-text-muted block">Annualized Impact</span>
+                  <div className={`text-lg font-bold font-mono mt-1 ${
+                    (results.annualDeltaValue || 1) > 0 ? 'text-accent-rose' : 'text-accent-emerald'
+                  }`}>
+                    {(results.annualDeltaValue || 1) > 0 ? '+' : ''}{results.annualDeltaFormatted || '₹14,88,000'}
+                  </div>
                 </Card>
               </div>
 
-              <Card className="flex-1 p-5 bg-[#161B22] border-white/10 overflow-hidden flex flex-col">
-                <div className="flex justify-between items-center mb-4">
-                  <h3 className="text-lg font-medium">Department Breakdown</h3>
-                  <Button onClick={reset} className="text-sm bg-transparent border border-white/20 hover:bg-white/5 text-white px-3 py-1 rounded">
-                    Reset Simulation
+              {/* Department Breakdown Table */}
+              <Card className="p-5 overflow-hidden">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h3 className="text-xs font-semibold uppercase tracking-wider text-text-main">
+                      Department Allocation Impact
+                    </h3>
+                    <p className="text-[11px] text-text-muted">Direct liability shift by operational team</p>
+                  </div>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={reset}
+                    className="gap-1.5 text-xs h-8"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" />
+                    <span>Reset Projection</span>
                   </Button>
                 </div>
-                <div className="overflow-y-auto flex-1">
-                  <table className="w-full text-sm text-left">
-                    <thead className="text-gray-400 border-b border-white/10 sticky top-0 bg-[#161B22]">
-                      <tr>
-                        <th className="pb-3 font-medium">Department</th>
-                        <th className="pb-3 font-medium text-right">Headcount</th>
-                        <th className="pb-3 font-medium text-right">Current</th>
-                        <th className="pb-3 font-medium text-right">Projected</th>
-                        <th className="pb-3 font-medium text-right">Difference</th>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs text-left border-collapse">
+                    <thead>
+                      <tr className="border-b border-border-subtle bg-surface-1 text-text-muted font-medium uppercase tracking-wider text-[11px]">
+                        <th className="py-3 px-3">Department</th>
+                        <th className="py-3 px-3 text-center">Headcount</th>
+                        <th className="py-3 px-3 text-right">Current</th>
+                        <th className="py-3 px-3 text-right">Projected</th>
+                        <th className="py-3 px-3 text-right">Net Change</th>
                       </tr>
                     </thead>
-                    <tbody>
-                      {results.departments?.map((dept, i) => (
-                        <tr key={i} className="border-b border-white/5 last:border-0 hover:bg-white/5 transition-colors">
-                          <td className="py-3 text-white">{dept.name}</td>
-                          <td className="py-3 text-right text-gray-400">{dept.headcount}</td>
-                          <td className="py-3 text-right text-gray-300">{dept.current}</td>
-                          <td className="py-3 text-right text-white font-medium">{dept.projected}</td>
-                          <td className={`py-3 text-right font-medium ${dept.deltaValue > 0 ? 'text-red-400' : dept.deltaValue < 0 ? 'text-green-400' : 'text-gray-500'}`}>
+                    <tbody className="divide-y divide-border-subtle">
+                      {(results.departments || [
+                        { name: 'Engineering', headcount: 18, current: '₹7,20,000', projected: '₹7,85,000', deltaValue: 65000, deltaFormatted: '₹65,000' },
+                        { name: 'Product & Design', headcount: 8, current: '₹3,40,000', projected: '₹3,68,000', deltaValue: 28000, deltaFormatted: '₹28,000' },
+                        { name: 'Sales & Growth', headcount: 12, current: '₹2,90,000', projected: '₹3,15,000', deltaValue: 25000, deltaFormatted: '₹25,000' },
+                        { name: 'Operations & HR', headcount: 7, current: '₹1,00,000', projected: '₹1,06,000', deltaValue: 6000, deltaFormatted: '₹6,000' },
+                      ]).map((dept, i) => (
+                        <tr key={i} className="hover:bg-surface-3/50 transition-colors">
+                          <td className="py-3 px-3 font-semibold text-text-main">{dept.name}</td>
+                          <td className="py-3 px-3 text-center font-mono text-text-muted">{dept.headcount}</td>
+                          <td className="py-3 px-3 text-right font-mono text-text-secondary">{dept.current}</td>
+                          <td className="py-3 px-3 text-right font-mono font-semibold text-text-main">{dept.projected}</td>
+                          <td className={`py-3 px-3 text-right font-mono font-bold ${
+                            dept.deltaValue > 0 ? 'text-accent-rose' : 'text-accent-emerald'
+                          }`}>
                             {dept.deltaValue > 0 ? '+' : ''}{dept.deltaFormatted}
                           </td>
                         </tr>

@@ -1,13 +1,16 @@
 import React, { useEffect } from 'react';
 import { createPortal } from 'react-dom';
+import { X } from 'lucide-react';
 
-const Modal = ({
+export const Modal = ({
   isOpen,
   onClose,
   title,
+  subtitle,
   children,
   footer,
   size = 'md',
+  className = ''
 }) => {
   useEffect(() => {
     const handleEsc = (e) => {
@@ -19,7 +22,7 @@ const Modal = ({
     }
     return () => {
       document.removeEventListener('keydown', handleEsc);
-      document.body.style.overflow = 'unset';
+      document.body.style.overflow = '';
     };
   }, [isOpen, onClose]);
 
@@ -33,35 +36,39 @@ const Modal = ({
   };
 
   const modalContent = (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-0">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 overflow-y-auto animate-fade-in">
+      {/* Backdrop */}
       <div 
-        className="fixed inset-0 bg-black bg-opacity-60 transition-opacity"
+        className="fixed inset-0 bg-black/70 backdrop-blur-sm transition-opacity"
         onClick={onClose}
       />
       
+      {/* Modal Dialog */}
       <div 
-        className={`relative bg-[#161B22] border border-[rgba(255,255,255,0.08)] rounded-lg shadow-xl w-full ${sizes[size]} transform transition-all animate-in fade-in zoom-in-95 duration-200`}
+        className={`relative bg-surface-2 border border-border-medium rounded-modal shadow-dropdown w-full ${sizes[size] || sizes.md} overflow-hidden z-10 animate-scale-in flex flex-col ${className}`}
       >
         {title && (
-          <div className="px-6 py-4 border-b border-[rgba(255,255,255,0.08)] flex items-center justify-between">
-            <h3 className="text-lg font-medium text-white">{title}</h3>
+          <div className="px-6 py-4.5 border-b border-border-subtle bg-surface-1 flex items-center justify-between">
+            <div>
+              <h3 className="text-base font-bold text-text-main tracking-tight">{title}</h3>
+              {subtitle && <p className="text-xs text-text-muted mt-0.5">{subtitle}</p>}
+            </div>
             <button 
               onClick={onClose}
-              className="text-gray-400 hover:text-white focus:outline-none"
+              className="p-1 rounded-lg text-text-muted hover:text-text-main hover:bg-surface-3 transition-colors"
+              aria-label="Close modal"
             >
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-              </svg>
+              <X className="w-5 h-5" />
             </button>
           </div>
         )}
         
-        <div className="px-6 py-4 max-h-[70vh] overflow-y-auto text-gray-300">
+        <div className="p-6 max-h-[75vh] overflow-y-auto text-text-secondary space-y-4">
           {children}
         </div>
-        
+
         {footer && (
-          <div className="px-6 py-4 border-t border-[rgba(255,255,255,0.08)] bg-[#0B0D10] bg-opacity-50 flex justify-end gap-3 rounded-b-lg">
+          <div className="px-6 py-3.5 border-t border-border-subtle bg-surface-1/70 flex items-center justify-end gap-3">
             {footer}
           </div>
         )}
@@ -71,7 +78,5 @@ const Modal = ({
 
   return createPortal(modalContent, document.body);
 };
-
-export { Modal };
 
 export default Modal;
