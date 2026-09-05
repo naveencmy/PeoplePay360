@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import * as api from '@/api/mockApi';
+import * as api from '@/api/realApi';
 
 export const useSchedules = () => {
   return useQuery({

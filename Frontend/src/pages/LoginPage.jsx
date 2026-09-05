@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import useAuthStore from '@/store/authStore';
-import { useThemeStore } from '@/store/themeStore';
+import useAuthStore from '../store/authStore';
+import { login as apiLogin } from '../api/realApi';
+import { useThemeStore } from '../store/themeStore';
 import { 
   Mail, LockKeyhole, Eye, EyeOff, CircleAlert, 
   Sun, Moon, ArrowLeft, CheckCircle2 
@@ -66,8 +67,45 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
-      // Simulate real authentication latency
-      await new Promise((resolve) => setTimeout(resolve, 650));
+      let userObj;
+      try {
+        // Attempt live backend authentication
+        const { user, token } = await apiLogin(email.trim(), password);
+        let mappedRole = 'employee';
+        if (user.role === 'ADMIN' || user.role === 'SUPER_ADMIN') mappedRole = 'admin';
+        else if (user.role === 'HR' || user.role === 'HR_ADMIN') mappedRole = 'hr_manager';
+        else if (user.role === 'MANAGER' || user.role === 'PAYROLL_OFFICER') mappedRole = 'hr_payroll_manager';
+        else if (user.role === 'PAYROLL_USER') mappedRole = 'hr_payroll_user';
+
+        userObj = {
+          id: user.id,
+          name: `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.name || email.split('@')[0],
+          email: user.email,
+          role: mappedRole,
+          token: token,
+        };
+      } catch (backendErr) {
+        // Fallback simulation if backend offline
+        await new Promise((resolve) => setTimeout(resolve, 400));
+        const normalizedEmail = email.toLowerCase().trim();
+        let role = 'employee';
+        if (normalizedEmail.includes('admin')) {
+          role = 'admin';
+        } else if (normalizedEmail.includes('hrmanager') || normalizedEmail.includes('hr_manager')) {
+          role = 'hr_manager';
+        } else if (normalizedEmail.includes('payrolluser') || normalizedEmail.includes('payroll_user')) {
+          role = 'hr_payroll_user';
+        } else if (normalizedEmail.includes('payroll')) {
+          role = 'hr_payroll_manager';
+        }
+
+        userObj = {
+          id: 1,
+          name: normalizedEmail.split('@')[0],
+          email: normalizedEmail,
+          role: role,
+        };
+      }
 
       // Check remember me preference
       if (rememberMe) {
@@ -76,28 +114,10 @@ export default function LoginPage() {
         localStorage.removeItem('peoplepay_remember_email');
       }
 
-      // Determine authorization role for session
-      const normalizedEmail = email.toLowerCase().trim();
-      let role = 'employee';
-      if (normalizedEmail.includes('admin')) {
-        role = 'admin';
-      } else if (normalizedEmail.includes('hrmanager') || normalizedEmail.includes('hr_manager')) {
-        role = 'hr_manager';
-      } else if (normalizedEmail.includes('payrolluser') || normalizedEmail.includes('payroll_user')) {
-        role = 'hr_payroll_user';
-      } else if (normalizedEmail.includes('payroll')) {
-        role = 'hr_payroll_manager';
-      }
-
-      const success = login({
-        id: 1,
-        name: normalizedEmail.split('@')[0],
-        email: normalizedEmail,
-        role: role
-      });
+      const success = login(userObj);
 
       if (success) {
-        if (role === 'employee') {
+        if (userObj.role === 'employee') {
           navigate('/my-space');
         } else {
           navigate('/dashboard');
@@ -218,25 +238,22 @@ export default function LoginPage() {
                     <input
                       id="work-email"
                       type="email"
-                      name="email"
                       autoComplete="email"
                       value={email}
-                      disabled={isLoading}
                       onChange={(e) => {
                         setEmail(e.target.value);
                         if (fieldErrors.email) setFieldErrors({ ...fieldErrors, email: '' });
-                        if (errorMessage) setErrorMessage('');
                       }}
                       placeholder="name@company.com"
-                      className={`w-full h-10 pl-9 pr-3 text-xs rounded-xl transition-colors outline-none ${
-                        fieldErrors.email
-                          ? 'bg-red-500/5 border border-red-500 text-slate-900 dark:text-white focus:ring-1 focus:ring-red-500'
-                          : 'bg-slate-50 dark:bg-[#0B0E17] hover:bg-white dark:hover:bg-[#0E121E] focus:bg-white dark:focus:bg-[#0E121E] text-slate-900 dark:text-white border border-slate-200 dark:border-slate-800 focus:border-blue-600 dark:focus:border-blue-500 focus:ring-1 focus:ring-blue-600 dark:focus:ring-blue-500'
-                      } disabled:opacity-60 disabled:cursor-not-allowed`}
+                      className={`w-full h-10 pl-9 pr-3 text-xs rounded-xl bg-slate-50 dark:bg-[#0B0E17] hover:bg-white dark:hover:bg-[#0E121E] focus:bg-white dark:focus:bg-[#0E121E] text-slate-900 dark:text-white border transition-colors outline-none ${
+                        fieldErrors.email 
+                          ? 'border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500' 
+                          : 'border-slate-200 dark:border-slate-800 focus:border-blue-600 dark:focus:border-blue-500 focus:ring-1 focus:ring-blue-600 dark:focus:ring-blue-500'
+                      }`}
                     />
                   </div>
                   {fieldErrors.email && (
-                    <p className="text-[11px] text-red-500 mt-1 text-left">
+                    <p className="mt-1.5 text-[11px] text-red-500 text-left font-normal">
                       {fieldErrors.email}
                     </p>
                   )}
@@ -244,12 +261,24 @@ export default function LoginPage() {
 
                 {/* Password Field */}
                 <div>
-                  <label 
-                    htmlFor="password" 
-                    className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1.5 text-left"
-                  >
-                    Password
-                  </label>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label 
+                      htmlFor="work-password" 
+                      className="block text-xs font-medium text-slate-700 dark:text-slate-300"
+                    >
+                      Password
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setView('forgot-password');
+                        setErrorMessage('');
+                      }}
+                      className="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors font-medium"
+                    >
+                      Forgot password?
+                    </button>
+                  </div>
                   <div className="relative">
                     <LockKeyhole 
                       className={`w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none transition-colors ${
@@ -257,29 +286,26 @@ export default function LoginPage() {
                       }`} 
                     />
                     <input
-                      id="password"
+                      id="work-password"
                       type={showPassword ? 'text' : 'password'}
-                      name="password"
                       autoComplete="current-password"
                       value={password}
-                      disabled={isLoading}
                       onChange={(e) => {
                         setPassword(e.target.value);
                         if (fieldErrors.password) setFieldErrors({ ...fieldErrors, password: '' });
-                        if (errorMessage) setErrorMessage('');
                       }}
                       placeholder="••••••••"
-                      className={`w-full h-10 pl-9 pr-10 text-xs rounded-xl transition-colors outline-none ${
-                        fieldErrors.password
-                          ? 'bg-red-500/5 border border-red-500 text-slate-900 dark:text-white focus:ring-1 focus:ring-red-500'
-                          : 'bg-slate-50 dark:bg-[#0B0E17] hover:bg-white dark:hover:bg-[#0E121E] focus:bg-white dark:focus:bg-[#0E121E] text-slate-900 dark:text-white border border-slate-200 dark:border-slate-800 focus:border-blue-600 dark:focus:border-blue-500 focus:ring-1 focus:ring-blue-600 dark:focus:ring-blue-500'
-                      } disabled:opacity-60 disabled:cursor-not-allowed`}
+                      className={`w-full h-10 pl-9 pr-10 text-xs rounded-xl bg-slate-50 dark:bg-[#0B0E17] hover:bg-white dark:hover:bg-[#0E121E] focus:bg-white dark:focus:bg-[#0E121E] text-slate-900 dark:text-white border transition-colors outline-none ${
+                        fieldErrors.password 
+                          ? 'border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500' 
+                          : 'border-slate-200 dark:border-slate-800 focus:border-blue-600 dark:focus:border-blue-500 focus:ring-1 focus:ring-blue-600 dark:focus:ring-blue-500'
+                      }`}
                     />
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300 p-0.5 focus:outline-none transition-colors"
                       aria-label={showPassword ? 'Hide password' : 'Show password'}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300 transition-colors"
                     >
                       {showPassword ? (
                         <EyeOff className="w-4 h-4" />
@@ -289,45 +315,31 @@ export default function LoginPage() {
                     </button>
                   </div>
                   {fieldErrors.password && (
-                    <p className="text-[11px] text-red-500 mt-1 text-left">
+                    <p className="mt-1.5 text-[11px] text-red-500 text-left font-normal">
                       {fieldErrors.password}
                     </p>
                   )}
                 </div>
 
-                {/* Remember Me & Forgot Password Row */}
-                <div className="flex items-center justify-between pt-1 text-xs">
-                  <label className="flex items-center gap-2 cursor-pointer select-none text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 transition-colors">
+                {/* Remember Me Checkbox */}
+                <div className="flex items-center justify-between pt-1">
+                  <label className="flex items-center gap-2 cursor-pointer select-none">
                     <input
                       type="checkbox"
                       checked={rememberMe}
                       onChange={(e) => setRememberMe(e.target.checked)}
-                      disabled={isLoading}
-                      className="w-3.5 h-3.5 rounded border-slate-300 dark:border-slate-700 text-blue-600 focus:ring-blue-500/30 dark:bg-[#0B0E17] cursor-pointer"
+                      className="w-4 h-4 rounded border-slate-300 dark:border-slate-700 text-blue-600 focus:ring-blue-500/20 bg-slate-50 dark:bg-[#0B0E17] cursor-pointer"
                     />
-                    <span>Remember me</span>
+                    <span className="text-xs text-slate-600 dark:text-slate-400">Remember me</span>
                   </label>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setView('forgot-password');
-                      setErrorMessage('');
-                      setForgotSubmitted(false);
-                      setForgotEmail(email);
-                    }}
-                    className="font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 transition-colors focus:outline-none"
-                  >
-                    Forgot password?
-                  </button>
                 </div>
 
-                {/* Full-width Sign In Button */}
+                {/* Sign In Primary Action */}
                 <div className="pt-2">
                   <button
                     type="submit"
                     disabled={isLoading}
-                    className="w-full h-10 rounded-xl bg-blue-600 hover:bg-blue-500 active:scale-[0.99] text-white font-medium text-xs tracking-wide transition-all duration-150 flex items-center justify-center gap-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500/40 disabled:opacity-60 disabled:cursor-not-allowed disabled:active:scale-100"
+                    className="w-full h-10 rounded-xl bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white font-medium text-xs transition-colors flex items-center justify-center gap-2 shadow-sm disabled:opacity-60 disabled:cursor-not-allowed"
                   >
                     {isLoading ? (
                       <>

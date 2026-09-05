@@ -61,6 +61,9 @@ export const useAuthStore = create(
         
         // If passed structured user object (e.g. from LoginPage)
         if (credentials.role) {
+          if (credentials.token) {
+            localStorage.setItem('token', credentials.token);
+          }
           set({
             user: {
               id: credentials.id || 'USR-001',
@@ -70,7 +73,7 @@ export const useAuthStore = create(
               employeeId: credentials.employeeId || 'EMP-001',
               email: credentials.email || ''
             },
-            token: credentials.token || 'mock-jwt-token-123',
+            token: credentials.token,
             isAuthenticated: true
           });
           return true;
@@ -83,6 +86,10 @@ export const useAuthStore = create(
         else if (username.includes('payrolluser') || username.includes('payroll_user')) role = 'hr_payroll_user';
         else if (username.includes('payroll')) role = 'hr_payroll_manager';
 
+        if (credentials.token) {
+          localStorage.setItem('token', credentials.token);
+        }
+
         set({
           user: { 
             id: credentials.id || 'USR-001', 
@@ -92,13 +99,16 @@ export const useAuthStore = create(
             employeeId: 'EMP-001',
             email: username.includes('@') ? username : `${username}@company.com`
           },
-          token: 'mock-jwt-token-123',
+          token: credentials.token,
           isAuthenticated: true
         });
         return true;
       },
       
-      logout: () => set({ user: null, token: null, isAuthenticated: false }),
+      logout: () => {
+        localStorage.removeItem('token');
+        set({ user: null, token: null, isAuthenticated: false });
+      },
       
       hasPermission: (action, resource) => {
         const { user } = get();

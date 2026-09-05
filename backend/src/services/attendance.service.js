@@ -96,7 +96,7 @@ async function getAttendanceSummary(employeeId, periodStart, periodEnd) {
  * Get daily attendance records
  */
 async function getAttendanceRecords(employeeId, periodStart, periodEnd) {
-  return attendanceRepo.getByPeriod(employeeId, periodStart, periodEnd);
+  return attendanceRepo.listAll(employeeId, periodStart, periodEnd);
 }
 
 /**

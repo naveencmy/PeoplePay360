@@ -60,6 +60,7 @@ const Table = ({
                 return (
                   <th 
                     key={key} 
+                    scope="col"
                     className={`px-5 py-3.5 font-medium select-none ${col.sortable ? 'cursor-pointer hover:text-text-main' : ''} ${col.align === 'right' ? 'text-right' : 'text-left'}`}
                     onClick={() => col.sortable && onSort && onSort(key)}
                   >
@@ -81,7 +82,7 @@ const Table = ({
                 );
               })}
               {rowActions.length > 0 && (
-                <th className="px-5 py-3.5 text-right font-medium">Actions</th>
+                <th scope="col" className="px-5 py-3.5 text-right font-medium">Actions</th>
               )}
             </tr>
           </thead>
@@ -127,28 +128,40 @@ const Table = ({
                       <button
                         type="button"
                         onClick={(e) => toggleDropdown(e, rowIdx)}
-                        className="p-1 rounded-md text-text-muted hover:text-text-main hover:bg-surface-3 transition-colors"
+                        aria-label="Row actions menu"
+                        aria-haspopup="menu"
+                        aria-expanded={activeDropdown === rowIdx}
+                        className="p-1.5 rounded-md text-text-muted hover:text-text-main hover:bg-surface-3 transition-colors min-w-[32px] min-h-[32px] inline-flex items-center justify-center focus-visible:ring-2 focus-visible:ring-accent-blue/40"
                       >
                         •••
                       </button>
                       {activeDropdown === rowIdx && (
-                        <div 
-                          className="absolute right-4 mt-1 w-36 bg-surface-3 border border-border-medium rounded-lg shadow-dropdown py-1 z-20 animate-fade-in"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          {rowActions.map((action, actIdx) => (
-                            <button
-                              key={actIdx}
-                              onClick={(e) => handleActionClick(e, action, row)}
-                              className={`w-full text-left px-3 py-1.5 text-xs flex items-center gap-2 hover:bg-surface-2 transition-colors ${
-                                action.danger ? 'text-accent-rose' : 'text-text-main'
-                              }`}
-                            >
-                              {action.icon && <action.icon className="w-3.5 h-3.5" />}
-                              {action.label}
-                            </button>
-                          ))}
-                        </div>
+                        <>
+                          <div 
+                            className="fixed inset-0 z-10" 
+                            onClick={(e) => { e.stopPropagation(); setActiveDropdown(null); }} 
+                            aria-hidden="true" 
+                          />
+                          <div 
+                            className="absolute right-4 mt-1 w-36 bg-surface-3 border border-border-medium rounded-lg shadow-dropdown py-1 z-20 animate-fade-in"
+                            role="menu"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            {rowActions.map((action, actIdx) => (
+                              <button
+                                key={actIdx}
+                                role="menuitem"
+                                onClick={(e) => handleActionClick(e, action, row)}
+                                className={`w-full text-left px-3 py-1.5 text-xs flex items-center gap-2 hover:bg-surface-2 transition-colors ${
+                                  action.danger ? 'text-accent-rose' : 'text-text-main'
+                                }`}
+                              >
+                                {action.icon && <action.icon className="w-3.5 h-3.5" />}
+                                {action.label}
+                              </button>
+                            ))}
+                          </div>
+                        </>
                       )}
                     </td>
                   )}
@@ -211,7 +224,7 @@ Table.Row = ({ children, onClick, className = '' }) => (
 );
 
 Table.Head = ({ children, className = '', align = 'left' }) => (
-  <th className={`px-5 py-3.5 font-medium select-none text-${align} ${className}`}>
+  <th scope="col" className={`px-5 py-3.5 font-medium select-none text-${align} ${className}`}>
     {children}
   </th>
 );

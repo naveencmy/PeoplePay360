@@ -65,4 +65,25 @@ async function bulkEmailPayslips(req, res) {
   sendSuccess(res, result, `Sent: ${result.sent.length}, Failed: ${result.failed.length}`);
 }
 
-module.exports = { getPayslip, getPayslipsByPayrun, getPayslipsByEmployee, downloadPDF, emailPayslip, bulkEmailPayslips };
+async function listPayslips(req, res) {
+  if (req.query.payrun_id) {
+    const payslips = await payslipService.getPayslipsByPayrun(req.query.payrun_id);
+    return sendSuccess(res, payslips);
+  }
+  if (req.query.employee_id) {
+    const result = await payslipService.getPayslipsByEmployee(req.query.employee_id, req.query);
+    return sendSuccess(res, result.payslips, 'Payslips retrieved', 200, result.pagination);
+  }
+  const payslipRepo = require('../repositories/payslip.repository');
+  const result = await payslipRepo.raw(
+    `SELECT ps.*, e.first_name, e.last_name, e.employee_code, e.department, e.email, p.name as payrun_name
+     FROM payslips ps
+     JOIN employees e ON e.id = ps.employee_id
+     LEFT JOIN payruns p ON p.id = ps.payrun_id
+     WHERE ps.deleted_at IS NULL
+     ORDER BY ps.created_at DESC LIMIT 100`
+  );
+  sendSuccess(res, result.rows);
+}
+
+module.exports = { getPayslip, getPayslipsByPayrun, getPayslipsByEmployee, downloadPDF, emailPayslip, bulkEmailPayslips, listPayslips };

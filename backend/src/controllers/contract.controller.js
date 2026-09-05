@@ -41,4 +41,9 @@ async function getExpiringSoon(req, res) {
   sendSuccess(res, contracts);
 }
 
-module.exports = { createContract, updateContract, getEmployeeContracts, getActiveContract, endContract, getExpiringSoon };
+async function listContracts(req, res) {
+  const contracts = await contractService.listContracts(req.query);
+  sendSuccess(res, contracts);
+}
+
+module.exports = { createContract, updateContract, getEmployeeContracts, getActiveContract, endContract, getExpiringSoon, listContracts };

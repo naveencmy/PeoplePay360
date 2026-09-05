@@ -12,6 +12,8 @@ export const Input = forwardRef(({
 }, ref) => {
   const inputId = id || `input-${Math.random().toString(36).substring(2, 9)}`;
   const hasError = Boolean(error);
+  const errorId = `${inputId}-error`;
+  const helperId = `${inputId}-helper`;
 
   return (
     <div className={`w-full ${className}`}>
@@ -22,13 +24,15 @@ export const Input = forwardRef(({
       )}
       <div className="relative rounded-input shadow-sm">
         {leadingIcon && (
-          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-text-muted">
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-text-muted" aria-hidden="true">
             {leadingIcon}
           </div>
         )}
         <input
           id={inputId}
           ref={ref}
+          aria-invalid={hasError ? 'true' : 'false'}
+          aria-describedby={hasError ? errorId : (helperText ? helperId : undefined)}
           className={`block w-full rounded-input text-sm bg-surface-2 text-text-main placeholder-text-muted
             ${leadingIcon ? 'pl-9' : 'pl-3.5'}
             ${trailingIcon ? 'pr-9' : 'pr-3.5'}
@@ -43,16 +47,16 @@ export const Input = forwardRef(({
           {...rest}
         />
         {trailingIcon && (
-          <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-text-muted">
+          <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-text-muted" aria-hidden="true">
             {trailingIcon}
           </div>
         )}
       </div>
       {hasError && (
-        <p className="mt-1 text-xs text-accent-rose font-medium">{error}</p>
+        <p id={errorId} role="alert" className="mt-1 text-xs text-accent-rose font-medium">{error}</p>
       )}
       {helperText && !hasError && (
-        <p className="mt-1 text-xs text-text-muted">{helperText}</p>
+        <p id={helperId} className="mt-1 text-xs text-text-muted">{helperText}</p>
       )}
     </div>
   );

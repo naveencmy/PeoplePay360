@@ -11,6 +11,7 @@ router.post('/check-in', validate({ body: checkInSchema }), ctrl.checkIn);
 router.post('/check-out', validate({ body: checkOutSchema }), ctrl.checkOut);
 router.get('/summary', validate({ query: attendanceSummaryQuerySchema }), ctrl.getSummary);
 router.get('/anomalies', authorize('ADMIN', 'HR', 'MANAGER'), ctrl.getAnomalies);
+router.get('/', ctrl.getRecords);
 router.get('/:id', ctrl.getRecords);
 router.post('/bulk', authorize('ADMIN', 'HR'), validate({ body: bulkAttendanceSchema }), ctrl.bulkImport);
 

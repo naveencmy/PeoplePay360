@@ -16,7 +16,7 @@ function getPool() {
       database: env.DB_NAME,
       user: env.DB_USER,
       password: env.DB_PASSWORD,
-      ssl: env.DB_SSL ? { rejectUnauthorized: false } : false,
+      ssl: env.DB_SSL === true ? { rejectUnauthorized: false } : false,
       min: env.DB_POOL_MIN,
       max: env.DB_POOL_MAX,
       idleTimeoutMillis: 30000,

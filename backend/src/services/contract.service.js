@@ -116,6 +116,21 @@ async function getContractsForPeriod(employeeIds, periodStart, periodEnd) {
   return contractRepo.getActiveForEmployees(employeeIds, periodStart, periodEnd);
 }
 
+/**
+ * List all contracts
+ */
+async function listContracts(query = {}) {
+  const result = await contractRepo.raw(
+    `SELECT c.*, e.first_name, e.last_name, e.employee_code, s.name as structure_name 
+     FROM contracts c
+     JOIN employees e ON e.id = c.employee_id
+     LEFT JOIN salary_structures s ON s.id = c.structure_id
+     WHERE c.deleted_at IS NULL
+     ORDER BY c.created_at DESC`
+  );
+  return result.rows;
+}
+
 module.exports = {
   createContract,
   updateContract,
@@ -124,4 +139,5 @@ module.exports = {
   endContract,
   getExpiringSoon,
   getContractsForPeriod,
+  listContracts,
 };

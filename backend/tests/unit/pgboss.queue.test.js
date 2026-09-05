@@ -1,12 +1,3 @@
-/**
- * ═══════════════════════════════════════════════════════════════════════════
- * PG-BOSS QUEUE & WORKER UNIT TESTS
- * Tests Section C: Background Job Queue (pg-boss — PostgreSQL-backed)
- * Validates singleton locking, batch inserts, retry configurations,
- * worker definitions, and SQL observability queries.
- * ═══════════════════════════════════════════════════════════════════════════
- */
-
 // Mock pg-boss to test contract and behaviors without requiring live DB connection
 jest.mock('pg-boss', () => {
   return jest.fn().mockImplementation((config) => ({

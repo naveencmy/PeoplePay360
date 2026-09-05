@@ -36,11 +36,17 @@ export const Modal = ({
   };
 
   const modalContent = (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 overflow-y-auto animate-fade-in">
+    <div 
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 overflow-y-auto animate-fade-in"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby={title ? 'modal-title' : undefined}
+    >
       {/* Backdrop */}
       <div 
         className="fixed inset-0 bg-black/70 backdrop-blur-sm transition-opacity"
         onClick={onClose}
+        aria-hidden="true"
       />
       
       {/* Modal Dialog */}
@@ -50,13 +56,14 @@ export const Modal = ({
         {title && (
           <div className="px-6 py-4.5 border-b border-border-subtle bg-surface-1 flex items-center justify-between">
             <div>
-              <h3 className="text-base font-bold text-text-main tracking-tight">{title}</h3>
+              <h3 id="modal-title" className="text-base font-bold text-text-main tracking-tight">{title}</h3>
               {subtitle && <p className="text-xs text-text-muted mt-0.5">{subtitle}</p>}
             </div>
             <button 
+              type="button"
               onClick={onClose}
-              className="p-1 rounded-lg text-text-muted hover:text-text-main hover:bg-surface-3 transition-colors"
-              aria-label="Close modal"
+              className="p-1.5 rounded-lg text-text-muted hover:text-text-main hover:bg-surface-3 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-blue min-w-[36px] min-h-[36px] flex items-center justify-center"
+              aria-label="Close dialog"
             >
               <X className="w-5 h-5" />
             </button>

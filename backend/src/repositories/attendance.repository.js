@@ -60,6 +60,29 @@ class AttendanceRepository extends BaseRepository {
     };
   }
 
+  async listAll(employeeId = null, periodStart = null, periodEnd = null) {
+    let sql = `SELECT a.*, e.first_name, e.last_name, e.employee_code, e.department 
+               FROM attendance a
+               JOIN employees e ON e.id = a.employee_id
+               WHERE a.deleted_at IS NULL`;
+    const params = [];
+    if (employeeId) {
+      params.push(employeeId);
+      sql += ` AND a.employee_id = $${params.length}`;
+    }
+    if (periodStart) {
+      params.push(periodStart);
+      sql += ` AND a.date >= $${params.length}`;
+    }
+    if (periodEnd) {
+      params.push(periodEnd);
+      sql += ` AND a.date <= $${params.length}`;
+    }
+    sql += ` ORDER BY a.date DESC LIMIT 200`;
+    const result = await this.raw(sql, params);
+    return result.rows;
+  }
+
   /**
    * Get daily attendance records for an employee within a period
    */

@@ -23,8 +23,9 @@ async function getSummary(req, res) {
 }
 
 async function getRecords(req, res) {
+  const employeeId = req.params.id || req.query.employee_id;
   const records = await attendanceService.getAttendanceRecords(
-    req.params.id, req.query.start_date, req.query.end_date
+    employeeId, req.query.start_date, req.query.end_date
   );
   sendSuccess(res, records);
 }

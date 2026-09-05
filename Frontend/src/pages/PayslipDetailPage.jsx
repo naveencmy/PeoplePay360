@@ -1,10 +1,9 @@
 import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Download, Mail, ArrowLeft, Building2, User, Printer, ShieldCheck, CheckCircle2 } from 'lucide-react';
+import { Download, Mail, ArrowLeft, Printer, ShieldCheck } from 'lucide-react';
 import { usePayslip, useGeneratePDF } from '@/hooks/usePayslips';
 import { StatusPill } from '@/components/ui/StatusPill';
 import { Button } from '@/components/ui/Button';
-import MoneyDisplay from '@/components/ui/MoneyDisplay';
 import PageHeader from '@/components/layout/PageHeader';
 import toast from 'react-hot-toast';
 
@@ -21,6 +20,34 @@ export const PayslipDetailPage = () => {
   const handleEmail = () => {
     toast.success('Payslip copy emailed to employee');
   };
+
+  if (isLoading) {
+    return (
+      <div className="p-12 text-center text-text-muted flex flex-col items-center justify-center gap-3">
+        <div className="w-6 h-6 border-2 border-accent-blue border-t-transparent rounded-full animate-spin" />
+        <span className="text-sm font-medium">Loading salary statement...</span>
+      </div>
+    );
+  }
+
+  const p = payslip || {};
+  const employeeName = p.employeeName || (p.employee ? `${p.employee.first_name || ''} ${p.employee.last_name || ''}`.trim() : 'Eleanor Vance');
+  const employeeId = p.employeeId || p.employee_id || 'EMP-001';
+  const designation = p.jobPosition || p.designation || 'Lead Software Engineer';
+  const department = p.department || (p.employee?.department) || 'Core Engineering';
+  const period = p.periodName || p.payPeriod || 'October 2026';
+  const basicSalary = p.basicSalary || p.basic || '₹60,000.00';
+  const hra = p.hra || '₹30,000.00';
+  const specialAllowance = p.specialAllowance || '₹20,000.00';
+  const conveyance = p.conveyance || '₹10,000.00';
+  const totalEarnings = p.totalEarnings || p.grossEarnings || p.grossPay || '₹1,20,000.00';
+  const pf = p.providentFund || p.pf || '₹7,200.00';
+  const pt = p.professionalTax || p.pt || '₹200.00';
+  const tds = p.tds || p.tax || '₹7,000.00';
+  const totalDeductions = p.totalDeductions || '₹14,400.00';
+  const netPay = p.netPay || p.netSalary || '₹1,05,600.00';
+  const bankAccount = p.bankAccount || 'HDFC ·••• 4821';
+  const status = p.status || 'Paid';
 
   return (
     <div className="space-y-6 pb-16 animate-fade-in">
@@ -50,7 +77,16 @@ export const PayslipDetailPage = () => {
               className="gap-1.5"
             >
               <Printer size={14} />
-              <span>Print / PDF</span>
+              <span>Print</span>
+            </Button>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => generatePDF ? generatePDF(id) : handlePrint()}
+              className="gap-1.5"
+            >
+              <Download size={14} />
+              <span>Download PDF</span>
             </Button>
             <Button 
               variant="primary" 
@@ -93,10 +129,10 @@ export const PayslipDetailPage = () => {
               Payslip For Period
             </span>
             <span className="text-sm font-bold text-text-main font-mono">
-              October 2026
+              {period}
             </span>
             <div className="mt-1">
-              <StatusPill status={payslip?.status || 'Paid'} />
+              <StatusPill status={status} />
             </div>
           </div>
         </div>
@@ -105,36 +141,36 @@ export const PayslipDetailPage = () => {
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 p-4 rounded-xl bg-surface-1 border border-border-subtle text-xs">
           <div>
             <span className="text-[10px] font-semibold uppercase text-text-muted block">Employee Name</span>
-            <span className="font-semibold text-text-main mt-0.5 block">{payslip?.employeeName || 'Eleanor Vance'}</span>
+            <span className="font-semibold text-text-main mt-0.5 block">{employeeName}</span>
           </div>
           <div>
             <span className="text-[10px] font-semibold uppercase text-text-muted block">Employee ID</span>
-            <span className="font-mono text-text-main mt-0.5 block">{payslip?.employeeId || 'EMP-001'}</span>
+            <span className="font-mono text-text-main mt-0.5 block">{employeeId}</span>
           </div>
           <div>
             <span className="text-[10px] font-semibold uppercase text-text-muted block">Designation</span>
-            <span className="text-text-main mt-0.5 block">{payslip?.jobPosition || 'Lead Software Engineer'}</span>
+            <span className="text-text-main mt-0.5 block">{designation}</span>
           </div>
           <div>
             <span className="text-[10px] font-semibold uppercase text-text-muted block">Department</span>
-            <span className="text-text-main mt-0.5 block">{payslip?.department || 'Core Engineering'}</span>
+            <span className="text-text-main mt-0.5 block">{department}</span>
           </div>
 
           <div>
             <span className="text-[10px] font-semibold uppercase text-text-muted block">Bank Account</span>
-            <span className="font-mono text-text-main mt-0.5 block">HDFC ·••• 4821</span>
+            <span className="font-mono text-text-main mt-0.5 block">{bankAccount}</span>
           </div>
           <div>
             <span className="text-[10px] font-semibold uppercase text-text-muted block">PAN Number</span>
-            <span className="font-mono text-text-main mt-0.5 block uppercase">ABCDE1234F</span>
+            <span className="font-mono text-text-main mt-0.5 block uppercase">{p.pan || 'ABCDE1234F'}</span>
           </div>
           <div>
             <span className="text-[10px] font-semibold uppercase text-text-muted block">UAN / PF Number</span>
-            <span className="font-mono text-text-main mt-0.5 block">100987654321</span>
+            <span className="font-mono text-text-main mt-0.5 block">{p.uan || '100987654321'}</span>
           </div>
           <div>
             <span className="text-[10px] font-semibold uppercase text-text-muted block">Paid Days / LOP</span>
-            <span className="font-mono text-text-main mt-0.5 block">30 / 0 days</span>
+            <span className="font-mono text-text-main mt-0.5 block">{p.workedDays || 30} / {p.lopDays || 0} days</span>
           </div>
         </div>
 
@@ -149,25 +185,25 @@ export const PayslipDetailPage = () => {
               </div>
               <div className="p-4 space-y-3 flex-1 text-xs">
                 <div className="flex justify-between items-center text-text-secondary">
-                  <span>Basic Salary (50% of CTC)</span>
-                  <span className="font-mono font-medium text-text-main">₹60,000.00</span>
+                  <span>Basic Salary</span>
+                  <span className="font-mono font-medium text-text-main">{basicSalary}</span>
                 </div>
                 <div className="flex justify-between items-center text-text-secondary">
                   <span>House Rent Allowance (HRA)</span>
-                  <span className="font-mono font-medium text-text-main">₹30,000.00</span>
+                  <span className="font-mono font-medium text-text-main">{hra}</span>
                 </div>
                 <div className="flex justify-between items-center text-text-secondary">
                   <span>Special Allowance</span>
-                  <span className="font-mono font-medium text-text-main">₹20,000.00</span>
+                  <span className="font-mono font-medium text-text-main">{specialAllowance}</span>
                 </div>
                 <div className="flex justify-between items-center text-text-secondary">
                   <span>Conveyance & Telecom</span>
-                  <span className="font-mono font-medium text-text-main">₹10,000.00</span>
+                  <span className="font-mono font-medium text-text-main">{conveyance}</span>
                 </div>
               </div>
               <div className="p-4 bg-surface-1 border-t border-border-subtle flex justify-between font-bold text-xs">
                 <span className="text-text-main uppercase">Gross Earnings</span>
-                <span className="font-mono text-text-main">₹1,20,000.00</span>
+                <span className="font-mono text-text-main">{totalEarnings}</span>
               </div>
             </div>
 
@@ -180,20 +216,20 @@ export const PayslipDetailPage = () => {
               <div className="p-4 space-y-3 flex-1 text-xs">
                 <div className="flex justify-between items-center text-text-secondary">
                   <span>Employees Provident Fund (EPF)</span>
-                  <span className="font-mono font-medium text-accent-rose">₹7,200.00</span>
+                  <span className="font-mono font-medium text-accent-rose">-{pf}</span>
                 </div>
                 <div className="flex justify-between items-center text-text-secondary">
                   <span>Professional Tax (PT)</span>
-                  <span className="font-mono font-medium text-accent-rose">₹200.00</span>
+                  <span className="font-mono font-medium text-accent-rose">-{pt}</span>
                 </div>
                 <div className="flex justify-between items-center text-text-secondary">
                   <span>Tax Deducted at Source (TDS)</span>
-                  <span className="font-mono font-medium text-accent-rose">₹7,000.00</span>
+                  <span className="font-mono font-medium text-accent-rose">-{tds}</span>
                 </div>
               </div>
               <div className="p-4 bg-surface-1 border-t border-border-subtle flex justify-between font-bold text-xs">
                 <span className="text-accent-rose uppercase">Total Deductions</span>
-                <span className="font-mono text-accent-rose">₹14,400.00</span>
+                <span className="font-mono text-accent-rose">-{totalDeductions}</span>
               </div>
             </div>
           </div>
@@ -206,10 +242,10 @@ export const PayslipDetailPage = () => {
               Net Take-Home Salary Transferred
             </div>
             <div className="text-2xl sm:text-3xl font-bold font-mono text-accent-emerald tracking-tight mt-1">
-              ₹1,05,600.00
+              {netPay}
             </div>
             <div className="text-xs text-text-muted mt-1 italic">
-              Amount in words: One Lakh Five Thousand Six Hundred Rupees Only
+              Directly credited to verified employee bank account
             </div>
           </div>
 
@@ -219,7 +255,7 @@ export const PayslipDetailPage = () => {
               Direct Deposit Verified
             </span>
             <span className="text-xs font-mono text-text-secondary mt-0.5 block">
-              UTR: HDFC2026103099812
+              UTR: {p.utrNumber || 'HDFC2026103099812'}
             </span>
           </div>
         </div>
