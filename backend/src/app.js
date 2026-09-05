@@ -80,16 +80,16 @@ app.use(errorHandler);
 
 // ═══ GRACEFUL SHUTDOWN ═══
 async function gracefulShutdown(signal) {
-  console.log(`\n📛 ${signal} received. Shutting down gracefully...`);
+  console.log(`\n${signal} received. Shutting down gracefully...`);
 
   try {
     await closePool();
     await closeRedis();
     await closeAllQueues();
-    console.log('✅ All connections closed. Goodbye!');
+    console.log('All connections closed. Goodbye!');
     process.exit(0);
   } catch (error) {
-    console.error('❌ Error during shutdown:', error);
+    console.error(' Error during shutdown:', error);
     process.exit(1);
   }
 }
@@ -97,10 +97,10 @@ async function gracefulShutdown(signal) {
 process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
 process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 process.on('unhandledRejection', (reason) => {
-  console.error('🔥 Unhandled Rejection:', reason);
+  console.error(' Unhandled Rejection:', reason);
 });
 process.on('uncaughtException', (error) => {
-  console.error('🔥 Uncaught Exception:', error);
+  console.error('Uncaught Exception:', error);
   gracefulShutdown('uncaughtException');
 });
 
@@ -112,10 +112,10 @@ if (require.main === module) {
 ╔═══════════════════════════════════════════════════════════╗
 ║                  PeoplePay360 API Server                  ║
 ║───────────────────────────────────────────────────────────║
-║  🚀 Running on:     http://localhost:${PORT}                ║
-║  📦 Environment:    ${env.NODE_ENV.padEnd(33)}║
-║  🗄️  Database:       ${env.DB_HOST}:${env.DB_PORT}/${env.DB_NAME.substring(0, 16).padEnd(20)}║
-║  🔴 Redis:          ${env.REDIS_HOST}:${String(env.REDIS_PORT).padEnd(24)}║
+║   Running on:     http://localhost:${PORT}                   ║
+║   Environment:    ${env.NODE_ENV.padEnd(33)}       ║
+║   Database:       ${env.DB_HOST}:${env.DB_PORT}/${env.DB_NAME.substring(0, 16).padEnd(20)}     ║
+║   Redis:          ${env.REDIS_HOST}:${String(env.REDIS_PORT).padEnd(24)}      ║
 ╚═══════════════════════════════════════════════════════════╝
     `);
   });

@@ -6,7 +6,16 @@ const apiClient = axios.create({
 
 // Request interceptor to attach bearer token
 apiClient.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token');
+  let token = localStorage.getItem('token');
+  if (!token) {
+    try {
+      const auth = JSON.parse(localStorage.getItem('auth-storage') || '{}');
+      token = auth?.state?.token;
+      if (token) {
+        localStorage.setItem('token', token);
+      }
+    } catch {}
+  }
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
@@ -26,6 +35,21 @@ apiClient.interceptors.response.use(
     return response.data;
   },
   (error) => {
+    if (error.response?.status === 401) {
+      localStorage.removeItem('token');
+      try {
+        const auth = JSON.parse(localStorage.getItem('auth-storage') || '{}');
+        if (auth?.state) {
+          auth.state.isAuthenticated = false;
+          auth.state.token = null;
+          auth.state.user = null;
+          localStorage.setItem('auth-storage', JSON.stringify(auth));
+        }
+      } catch {}
+      if (typeof window !== 'undefined' && !window.location.pathname.includes('/login')) {
+        window.location.href = '/login';
+      }
+    }
     return Promise.reject(handleApiError(error));
   }
 );

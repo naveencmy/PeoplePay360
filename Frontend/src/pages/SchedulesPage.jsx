@@ -94,7 +94,7 @@ export default function SchedulesPage() {
           </div>
           <div>
             <div className="text-[11px] font-semibold uppercase tracking-wider text-text-muted">Active Patterns</div>
-            <div className="text-xl font-bold font-mono text-text-main">{schedules.length || 3}</div>
+            <div className="text-xl font-bold font-mono text-text-main">{schedules.length}</div>
           </div>
         </Card>
 

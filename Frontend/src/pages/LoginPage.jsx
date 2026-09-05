@@ -3,9 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import useAuthStore from '../store/authStore';
 import { login as apiLogin } from '../api/realApi';
 import { useThemeStore } from '../store/themeStore';
-import { 
-  Mail, LockKeyhole, Eye, EyeOff, CircleAlert, 
-  Sun, Moon, ArrowLeft, CheckCircle2 
+import {
+  Mail, LockKeyhole, Eye, EyeOff, CircleAlert,
+  Sun, Moon, ArrowLeft, CheckCircle2
 } from 'lucide-react';
 
 export default function LoginPage() {
@@ -31,7 +31,7 @@ export default function LoginPage() {
 
   // Load remembered email on mount
   useEffect(() => {
-    const savedEmail = localStorage.getItem('peoplepay_remember_email');
+    const savedEmail = localStorage.getItem('core.kernelraise@gmail.com');
     if (savedEmail) {
       setEmail(savedEmail);
       setRememberMe(true);
@@ -67,46 +67,25 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
-      let userObj;
-      try {
-        // Attempt live backend authentication
-        const { user, token } = await apiLogin(email.trim(), password);
-        let mappedRole = 'employee';
-        if (user.role === 'ADMIN' || user.role === 'SUPER_ADMIN') mappedRole = 'admin';
-        else if (user.role === 'HR' || user.role === 'HR_ADMIN') mappedRole = 'hr_manager';
-        else if (user.role === 'MANAGER' || user.role === 'PAYROLL_OFFICER') mappedRole = 'hr_payroll_manager';
-        else if (user.role === 'PAYROLL_USER') mappedRole = 'hr_payroll_user';
+      // Live backend authentication
+      const { user, token } = await apiLogin(email.trim(), password);
+      let mappedRole = 'employee';
+      if (user.role === 'ADMIN' || user.role === 'SUPER_ADMIN') mappedRole = 'admin';
+      else if (user.role === 'HR' || user.role === 'HR_ADMIN') mappedRole = 'hr_manager';
+      else if (user.role === 'MANAGER' || user.role === 'PAYROLL_OFFICER') mappedRole = 'hr_payroll_manager';
+      else if (user.role === 'PAYROLL_USER') mappedRole = 'hr_payroll_user';
 
-        userObj = {
-          id: user.id,
-          name: `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.name || email.split('@')[0],
-          email: user.email,
-          role: mappedRole,
-          employeeId: user.employee_id || null,
-          token: token,
-        };
-      } catch (backendErr) {
-        // Fallback simulation if backend offline
-        await new Promise((resolve) => setTimeout(resolve, 400));
-        const normalizedEmail = email.toLowerCase().trim();
-        let role = 'employee';
-        if (normalizedEmail.includes('admin')) {
-          role = 'admin';
-        } else if (normalizedEmail.includes('hrmanager') || normalizedEmail.includes('hr_manager')) {
-          role = 'hr_manager';
-        } else if (normalizedEmail.includes('payrolluser') || normalizedEmail.includes('payroll_user')) {
-          role = 'hr_payroll_user';
-        } else if (normalizedEmail.includes('payroll')) {
-          role = 'hr_payroll_manager';
-        }
+      const userObj = {
+        id: user.id,
+        name: `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.name || email.split('@')[0],
+        email: user.email,
+        role: mappedRole,
+        employeeId: user.employee_id || null,
+        token: token,
+      };
 
-        userObj = {
-          id: 1,
-          name: normalizedEmail.split('@')[0],
-          email: normalizedEmail,
-          role: role,
-          employeeId: '01a070de-d77d-7772-8ccc-305745e66526',
-        };
+      if (token) {
+        localStorage.setItem('token', token);
       }
 
       // Check remember me preference
@@ -116,7 +95,7 @@ export default function LoginPage() {
         localStorage.removeItem('peoplepay_remember_email');
       }
 
-      const success = login(userObj);
+      const success = await login(userObj);
 
       if (success) {
         if (userObj.role === 'employee') {
@@ -125,10 +104,10 @@ export default function LoginPage() {
           navigate('/dashboard');
         }
       } else {
-        setErrorMessage('Email or password is incorrect.');
+        setErrorMessage('Failed to initialize session.');
       }
     } catch (err) {
-      setErrorMessage('Unable to sign in right now. Please try again.');
+      setErrorMessage(err.message || 'Invalid email or password. Please verify your credentials.');
     } finally {
       setIsLoading(false);
     }
@@ -159,9 +138,9 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#090C15] text-slate-900 dark:text-slate-100 flex flex-col justify-between p-4 sm:p-6 relative transition-colors duration-150">
       {/* Background Ambience: Subtle Radial Depth */}
-      <div 
-        className="fixed inset-0 pointer-events-none bg-[radial-gradient(ellipse_80%_60%_at_50%_40%,rgba(37,99,235,0.04),transparent)] dark:bg-[radial-gradient(ellipse_80%_60%_at_50%_40%,rgba(59,130,246,0.05),transparent)]" 
-        aria-hidden="true" 
+      <div
+        className="fixed inset-0 pointer-events-none bg-[radial-gradient(ellipse_80%_60%_at_50%_40%,rgba(37,99,235,0.04),transparent)] dark:bg-[radial-gradient(ellipse_80%_60%_at_50%_40%,rgba(59,130,246,0.05),transparent)]"
+        aria-hidden="true"
       />
 
       {/* Header: Quiet Top-Right Theme Switcher */}
@@ -212,8 +191,8 @@ export default function LoginPage() {
 
               {/* Inline Compact Error Alert */}
               {errorMessage && (
-                <div 
-                  role="alert" 
+                <div
+                  role="alert"
                   className="mb-5 p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 text-xs flex items-center gap-2.5 animate-fade-in"
                 >
                   <CircleAlert className="w-4 h-4 shrink-0" />
@@ -225,17 +204,16 @@ export default function LoginPage() {
               <form onSubmit={handleLogin} noValidate className="space-y-4">
                 {/* Work Email Field */}
                 <div>
-                  <label 
-                    htmlFor="work-email" 
+                  <label
+                    htmlFor="work-email"
                     className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1.5 text-left"
                   >
                     Work email
                   </label>
                   <div className="relative">
-                    <Mail 
-                      className={`w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none transition-colors ${
-                        fieldErrors.email ? 'text-red-500' : 'text-slate-400 dark:text-slate-500'
-                      }`} 
+                    <Mail
+                      className={`w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none transition-colors ${fieldErrors.email ? 'text-red-500' : 'text-slate-400 dark:text-slate-500'
+                        }`}
                     />
                     <input
                       id="work-email"
@@ -247,11 +225,10 @@ export default function LoginPage() {
                         if (fieldErrors.email) setFieldErrors({ ...fieldErrors, email: '' });
                       }}
                       placeholder="name@company.com"
-                      className={`w-full h-10 pl-9 pr-3 text-xs rounded-xl bg-slate-50 dark:bg-[#0B0E17] hover:bg-white dark:hover:bg-[#0E121E] focus:bg-white dark:focus:bg-[#0E121E] text-slate-900 dark:text-white border transition-colors outline-none ${
-                        fieldErrors.email 
-                          ? 'border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500' 
+                      className={`w-full h-10 pl-9 pr-3 text-xs rounded-xl bg-slate-50 dark:bg-[#0B0E17] hover:bg-white dark:hover:bg-[#0E121E] focus:bg-white dark:focus:bg-[#0E121E] text-slate-900 dark:text-white border transition-colors outline-none ${fieldErrors.email
+                          ? 'border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500'
                           : 'border-slate-200 dark:border-slate-800 focus:border-blue-600 dark:focus:border-blue-500 focus:ring-1 focus:ring-blue-600 dark:focus:ring-blue-500'
-                      }`}
+                        }`}
                     />
                   </div>
                   {fieldErrors.email && (
@@ -264,8 +241,8 @@ export default function LoginPage() {
                 {/* Password Field */}
                 <div>
                   <div className="flex items-center justify-between mb-1.5">
-                    <label 
-                      htmlFor="work-password" 
+                    <label
+                      htmlFor="work-password"
                       className="block text-xs font-medium text-slate-700 dark:text-slate-300"
                     >
                       Password
@@ -282,10 +259,9 @@ export default function LoginPage() {
                     </button>
                   </div>
                   <div className="relative">
-                    <LockKeyhole 
-                      className={`w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none transition-colors ${
-                        fieldErrors.password ? 'text-red-500' : 'text-slate-400 dark:text-slate-500'
-                      }`} 
+                    <LockKeyhole
+                      className={`w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none transition-colors ${fieldErrors.password ? 'text-red-500' : 'text-slate-400 dark:text-slate-500'
+                        }`}
                     />
                     <input
                       id="work-password"
@@ -297,11 +273,10 @@ export default function LoginPage() {
                         if (fieldErrors.password) setFieldErrors({ ...fieldErrors, password: '' });
                       }}
                       placeholder="••••••••"
-                      className={`w-full h-10 pl-9 pr-10 text-xs rounded-xl bg-slate-50 dark:bg-[#0B0E17] hover:bg-white dark:hover:bg-[#0E121E] focus:bg-white dark:focus:bg-[#0E121E] text-slate-900 dark:text-white border transition-colors outline-none ${
-                        fieldErrors.password 
-                          ? 'border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500' 
+                      className={`w-full h-10 pl-9 pr-10 text-xs rounded-xl bg-slate-50 dark:bg-[#0B0E17] hover:bg-white dark:hover:bg-[#0E121E] focus:bg-white dark:focus:bg-[#0E121E] text-slate-900 dark:text-white border transition-colors outline-none ${fieldErrors.password
+                          ? 'border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500'
                           : 'border-slate-200 dark:border-slate-800 focus:border-blue-600 dark:focus:border-blue-500 focus:ring-1 focus:ring-blue-600 dark:focus:ring-blue-500'
-                      }`}
+                        }`}
                     />
                     <button
                       type="button"
@@ -368,8 +343,8 @@ export default function LoginPage() {
               </div>
 
               {errorMessage && (
-                <div 
-                  role="alert" 
+                <div
+                  role="alert"
                   className="mb-5 p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 text-xs flex items-center gap-2.5 animate-fade-in"
                 >
                   <CircleAlert className="w-4 h-4 shrink-0" />
@@ -405,8 +380,8 @@ export default function LoginPage() {
               ) : (
                 <form onSubmit={handleForgotPasswordSubmit} noValidate className="space-y-4 text-left">
                   <div>
-                    <label 
-                      htmlFor="forgot-email" 
+                    <label
+                      htmlFor="forgot-email"
                       className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1.5"
                     >
                       Work email
@@ -464,8 +439,8 @@ export default function LoginPage() {
         <footer className="mt-6 text-center space-y-2">
           <p className="text-xs text-slate-500 dark:text-slate-500">
             Need help?{' '}
-            <a 
-              href="mailto:support@peoplepay360.internal" 
+            <a
+              href="mailto:support@peoplepay360.internal"
               className="font-medium text-slate-700 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
             >
               Contact your administrator

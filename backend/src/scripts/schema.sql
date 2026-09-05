@@ -203,6 +203,20 @@ CREATE TABLE IF NOT EXISTS audit_logs (
   metadata JSONB DEFAULT '{}'
 );
 
+-- Working Schedules Table
+CREATE TABLE IF NOT EXISTS working_schedules (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name VARCHAR(150) NOT NULL,
+  days_per_week INTEGER NOT NULL DEFAULT 5,
+  hours_per_week NUMERIC(5, 2) NOT NULL DEFAULT 40,
+  grid JSONB DEFAULT '[]',
+  status VARCHAR(50) DEFAULT 'ACTIVE',
+  company VARCHAR(100) DEFAULT 'PeoplePay360 Global',
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  deleted_at TIMESTAMP WITH TIME ZONE
+);
+
 -- Indexes for high performance
 CREATE INDEX IF NOT EXISTS idx_contracts_employee ON contracts(employee_id, state);
 CREATE INDEX IF NOT EXISTS idx_attendance_employee_date ON attendance(employee_id, date);
@@ -210,3 +224,4 @@ CREATE INDEX IF NOT EXISTS idx_timeoff_employee_period ON timeoff_requests(emplo
 CREATE INDEX IF NOT EXISTS idx_payslips_payrun ON payslips(payrun_id);
 CREATE INDEX IF NOT EXISTS idx_payslips_employee ON payslips(employee_id);
 CREATE INDEX IF NOT EXISTS idx_audit_entity ON audit_logs(entity_type, entity_id);
+

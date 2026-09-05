@@ -1,17 +1,4 @@
-import { useStore } from 'zustand';
-// Assuming useAuthStore is exported from a store
-// import { useAuthStore } from '@/store/authStore';
-
-// Mocking useAuthStore for demonstration if not created yet
-// If you have a real authStore, replace this mock with the real one
-const mockAuthStore = (selector) => {
-  const state = {
-    user: {
-      roles: ['admin'], // Modify this to test different roles
-    },
-  };
-  return selector(state);
-};
+import { useAuthStore } from '@/store/authStore';
 
 // Define permission matrix
 const PERMISSIONS = {
@@ -25,7 +12,27 @@ const PERMISSIONS = {
     payslips: ['read', 'create', 'update', 'delete'],
     users: ['read', 'create', 'update', 'delete'],
   },
-  hr: {
+  hr_manager: {
+    employees: ['read', 'create', 'update'],
+    contracts: ['read', 'create', 'update'],
+    attendance: ['read', 'update'],
+    timeoff: ['read', 'update'],
+    salary: ['read'],
+    payruns: ['read'],
+    payslips: ['read'],
+    users: [],
+  },
+  hr_payroll_manager: {
+    employees: ['read', 'create', 'update'],
+    contracts: ['read', 'create', 'update'],
+    attendance: ['read', 'update'],
+    timeoff: ['read', 'update'],
+    salary: ['read', 'create', 'update'],
+    payruns: ['read', 'create', 'update'],
+    payslips: ['read', 'create', 'update'],
+    users: [],
+  },
+  hr_payroll_user: {
     employees: ['read', 'create', 'update'],
     contracts: ['read', 'create', 'update'],
     attendance: ['read', 'update'],
@@ -36,10 +43,10 @@ const PERMISSIONS = {
     users: [],
   },
   employee: {
-    employees: ['read'], // Can only read own profile ideally, handled via API filters
+    employees: ['read'],
     contracts: ['read'],
-    attendance: ['read', 'create'], // Check-in/out
-    timeoff: ['read', 'create'], // Request time off
+    attendance: ['read', 'create'],
+    timeoff: ['read', 'create'],
     salary: [],
     payruns: [],
     payslips: ['read'],
@@ -48,19 +55,15 @@ const PERMISSIONS = {
 };
 
 export const usePermission = (action, resource) => {
-  // Use real authStore here in practice
-  // const user = useAuthStore(state => state.user);
-  const user = mockAuthStore(state => state.user);
+  const user = useAuthStore(state => state.user);
 
-  if (!user || !user.roles) return false;
+  if (!user) return false;
+  const role = (user.role || 'employee').toLowerCase();
+  const rolePermissions = PERMISSIONS[role] || PERMISSIONS.employee;
+  if (!rolePermissions) return false;
 
-  return user.roles.some((role) => {
-    const rolePermissions = PERMISSIONS[role.toLowerCase()];
-    if (!rolePermissions) return false;
+  const resourcePermissions = rolePermissions[resource?.toLowerCase()];
+  if (!resourcePermissions) return false;
 
-    const resourcePermissions = rolePermissions[resource.toLowerCase()];
-    if (!resourcePermissions) return false;
-
-    return resourcePermissions.includes(action.toLowerCase());
-  });
+  return resourcePermissions.includes(action?.toLowerCase());
 };

@@ -35,4 +35,9 @@ async function logout(req, res) {
   sendSuccess(res, result);
 }
 
-module.exports = { register, login, refreshToken, changePassword, getProfile, logout };
+async function listUsers(req, res) {
+  const users = await authService.listUsers();
+  sendSuccess(res, users);
+}
+
+module.exports = { register, login, refreshToken, changePassword, getProfile, logout, listUsers };

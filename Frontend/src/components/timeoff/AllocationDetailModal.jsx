@@ -45,28 +45,30 @@ export default function AllocationDetailModal({ allocation, onClose }) {
         <div className="space-y-3">
           <h4 className="text-white font-medium">Recent Requests (using this allocation)</h4>
           <div className="border border-[rgba(255,255,255,0.08)] rounded-lg overflow-hidden bg-[#161B22]">
-            <Table>
-              <Table.Header>
-                <Table.Row>
-                  <Table.Head>Date Range</Table.Head>
-                  <Table.Head>Days</Table.Head>
-                  <Table.Head>Status</Table.Head>
-                </Table.Row>
-              </Table.Header>
-              <Table.Body>
-                {/* Mock data for demonstration */}
-                <Table.Row>
-                  <Table.Cell className="text-gray-300">Oct 12 - Oct 14, 2023</Table.Cell>
-                  <Table.Cell className="text-white font-medium">3</Table.Cell>
-                  <Table.Cell><StatusPill variant="success">Approved</StatusPill></Table.Cell>
-                </Table.Row>
-                <Table.Row>
-                  <Table.Cell className="text-gray-300">Dec 20 - Dec 22, 2023</Table.Cell>
-                  <Table.Cell className="text-white font-medium">3</Table.Cell>
-                  <Table.Cell><StatusPill variant="warning">Pending</StatusPill></Table.Cell>
-                </Table.Row>
-              </Table.Body>
-            </Table>
+            {allocation.requests && allocation.requests.length > 0 ? (
+              <Table>
+                <Table.Header>
+                  <Table.Row>
+                    <Table.Head>Date Range</Table.Head>
+                    <Table.Head>Days</Table.Head>
+                    <Table.Head>Status</Table.Head>
+                  </Table.Row>
+                </Table.Header>
+                <Table.Body>
+                  {allocation.requests.map((req, idx) => (
+                    <Table.Row key={idx}>
+                      <Table.Cell className="text-gray-300">{req.dateRange || `${req.startDate} - ${req.endDate}`}</Table.Cell>
+                      <Table.Cell className="text-white font-medium">{req.days || req.duration}</Table.Cell>
+                      <Table.Cell><StatusPill status={req.status}>{req.status}</StatusPill></Table.Cell>
+                    </Table.Row>
+                  ))}
+                </Table.Body>
+              </Table>
+            ) : (
+              <div className="p-4 text-center text-xs text-gray-400">
+                No leave requests logged against this allocation.
+              </div>
+            )}
           </div>
         </div>
 

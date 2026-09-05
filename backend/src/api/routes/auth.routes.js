@@ -14,6 +14,7 @@ router.post('/login', authLimiter, validate({ body: loginSchema }), ctrl.login);
 router.post('/refresh', validate({ body: refreshTokenSchema }), ctrl.refreshToken);
 
 // Protected routes
+router.get('/users', authenticate, ctrl.listUsers);
 router.post('/change-password', authenticate, validate({ body: changePasswordSchema }), ctrl.changePassword);
 router.get('/profile', authenticate, ctrl.getProfile);
 router.post('/logout', authenticate, ctrl.logout);

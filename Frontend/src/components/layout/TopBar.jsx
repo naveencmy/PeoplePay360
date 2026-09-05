@@ -27,7 +27,7 @@ export default function TopBar({ onOpenCommandSearch }) {
   };
 
   return (
-    <header className="h-14 bg-surface-1 border-b border-border-subtle flex items-center px-4 sm:px-6 justify-between shrink-0 sticky top-0 z-30 transition-colors">
+    <header className="h-14 bg-surface-1 border-b border-border-subtle flex items-center px-4 sm:px-6 justify-between shrink-0 sticky top-0 z-50 transition-colors">
       {/* LEFT: Brand Logo */}
       <div className="flex items-center gap-6 lg:gap-8">
         <Link to="/dashboard" className="flex items-center gap-2.5 group">
@@ -61,16 +61,16 @@ export default function TopBar({ onOpenCommandSearch }) {
               <span>Employees</span>
               <ChevronDown className="w-3 h-3 text-text-muted transition-transform group-hover:rotate-180" />
             </button>
-            <div className="absolute top-full left-0 mt-1 bg-surface-3 border border-border-medium rounded-xl shadow-dropdown py-1.5 min-w-[210px] hidden group-hover:block z-50 animate-fade-in">
-              <Link to="/employees" className="block px-3.5 py-2 text-xs text-text-main hover:bg-surface-2 transition-colors">
+            <div className="absolute top-full left-0 mt-1 bg-white dark:bg-[#131B2A] border border-slate-200 dark:border-border-medium rounded-xl shadow-2xl py-1.5 min-w-[220px] hidden group-hover:block z-[100] animate-fade-in">
+              <Link to="/employees" className="block px-3.5 py-2 text-xs text-text-main hover:bg-slate-100 dark:hover:bg-surface-2 transition-colors">
                 <div className="font-medium">All Employees</div>
                 <div className="text-[10px] text-text-muted">Directory, profiles & hierarchy</div>
               </Link>
-              <Link to="/contracts" className="block px-3.5 py-2 text-xs text-text-main hover:bg-surface-2 transition-colors">
+              <Link to="/contracts" className="block px-3.5 py-2 text-xs text-text-main hover:bg-slate-100 dark:hover:bg-surface-2 transition-colors">
                 <div className="font-medium">Contracts</div>
                 <div className="text-[10px] text-text-muted">Terms, wages & structures</div>
               </Link>
-              <Link to="/schedules" className="block px-3.5 py-2 text-xs text-text-main hover:bg-surface-2 transition-colors">
+              <Link to="/schedules" className="block px-3.5 py-2 text-xs text-text-main hover:bg-slate-100 dark:hover:bg-surface-2 transition-colors">
                 <div className="font-medium">Working Schedules</div>
                 <div className="text-[10px] text-text-muted">Shift timings & weekly hours</div>
               </Link>
@@ -103,16 +103,16 @@ export default function TopBar({ onOpenCommandSearch }) {
               <span>Time Off</span>
               <ChevronDown className="w-3 h-3 text-text-muted transition-transform group-hover:rotate-180" />
             </button>
-            <div className="absolute top-full left-0 mt-1 bg-surface-3 border border-border-medium rounded-xl shadow-dropdown py-1.5 min-w-[200px] hidden group-hover:block z-50 animate-fade-in">
-              <Link to="/time-off" className="block px-3.5 py-2 text-xs text-text-main hover:bg-surface-2 transition-colors">
+            <div className="absolute top-full left-0 mt-1 bg-white dark:bg-[#131B2A] border border-slate-200 dark:border-border-medium rounded-xl shadow-2xl py-1.5 min-w-[210px] hidden group-hover:block z-[100] animate-fade-in">
+              <Link to="/time-off" className="block px-3.5 py-2 text-xs text-text-main hover:bg-slate-100 dark:hover:bg-surface-2 transition-colors">
                 <div className="font-medium">Leave Requests</div>
                 <div className="text-[10px] text-text-muted">Pending, approved & history</div>
               </Link>
-              <Link to="/time-off/allocations" className="block px-3.5 py-2 text-xs text-text-main hover:bg-surface-2 transition-colors">
+              <Link to="/time-off/allocations" className="block px-3.5 py-2 text-xs text-text-main hover:bg-slate-100 dark:hover:bg-surface-2 transition-colors">
                 <div className="font-medium">Leave Allocations</div>
                 <div className="text-[10px] text-text-muted">Balance & annual allowances</div>
               </Link>
-              <Link to="/time-off/types" className="block px-3.5 py-2 text-xs text-text-main hover:bg-surface-2 transition-colors">
+              <Link to="/time-off/types" className="block px-3.5 py-2 text-xs text-text-main hover:bg-slate-100 dark:hover:bg-surface-2 transition-colors">
                 <div className="font-medium">Leave Policies</div>
                 <div className="text-[10px] text-text-muted">Types, rules & encashment</div>
               </Link>
@@ -132,20 +132,20 @@ export default function TopBar({ onOpenCommandSearch }) {
               <span>Payroll</span>
               <ChevronDown className="w-3 h-3 text-text-muted transition-transform group-hover:rotate-180" />
             </button>
-            <div className="absolute top-full left-0 mt-1 bg-surface-3 border border-border-medium rounded-xl shadow-dropdown py-1.5 min-w-[220px] hidden group-hover:block z-50 animate-fade-in">
-              <Link to="/dashboard" className="block px-3.5 py-2 text-xs text-text-main hover:bg-surface-2 transition-colors">
+            <div className="absolute top-full left-0 mt-1 bg-white dark:bg-[#131B2A] border border-slate-200 dark:border-border-medium rounded-xl shadow-2xl py-1.5 min-w-[220px] hidden group-hover:block z-[100] animate-fade-in">
+              <Link to="/dashboard" className="block px-3.5 py-2 text-xs text-text-main hover:bg-slate-100 dark:hover:bg-surface-2 transition-colors">
                 <div className="font-medium">Dashboard</div>
                 <div className="text-[10px] text-text-muted">Financial KPIs & analytics</div>
               </Link>
-              <Link to="/payruns" className="block px-3.5 py-2 text-xs text-text-main hover:bg-surface-2 transition-colors">
+              <Link to="/payruns" className="block px-3.5 py-2 text-xs text-text-main hover:bg-slate-100 dark:hover:bg-surface-2 transition-colors">
                 <div className="font-medium">Payruns & Processing</div>
                 <div className="text-[10px] text-text-muted">Draft, computed & validated cycles</div>
               </Link>
-              <Link to="/payslips" className="block px-3.5 py-2 text-xs text-text-main hover:bg-surface-2 transition-colors">
+              <Link to="/payslips" className="block px-3.5 py-2 text-xs text-text-main hover:bg-slate-100 dark:hover:bg-surface-2 transition-colors">
                 <div className="font-medium">Payslips</div>
                 <div className="text-[10px] text-text-muted">Digital statements & PDF export</div>
               </Link>
-              <Link to="/salary-structures" className="block px-3.5 py-2 text-xs text-text-main hover:bg-surface-2 transition-colors">
+              <Link to="/salary-structures" className="block px-3.5 py-2 text-xs text-text-main hover:bg-slate-100 dark:hover:bg-surface-2 transition-colors">
                 <div className="font-medium">Salary Structures & Rules</div>
                 <div className="text-[10px] text-text-muted">Formula engine & dependency graph</div>
               </Link>
@@ -217,18 +217,18 @@ export default function TopBar({ onOpenCommandSearch }) {
           </button>
 
           {notificationsOpen && (
-            <div className="absolute right-0 mt-2 w-80 bg-surface-3 border border-border-medium rounded-xl shadow-dropdown py-2 z-50 animate-scale-in">
+            <div className="absolute right-0 mt-2 w-80 bg-white dark:bg-[#131B2A] border border-slate-200 dark:border-border-medium rounded-xl shadow-2xl py-2 z-[100] animate-scale-in">
               <div className="px-4 py-2 border-b border-border-subtle flex items-center justify-between">
                 <span className="text-xs font-bold uppercase tracking-wider text-text-main">Notifications</span>
                 <span className="text-[10px] text-accent-blue cursor-pointer hover:underline">Mark all read</span>
               </div>
               <div className="max-h-64 overflow-y-auto divide-y divide-border-subtle">
-                <div className="p-3 hover:bg-surface-2 text-xs transition-colors cursor-pointer">
+                <div className="p-3 hover:bg-slate-100 dark:hover:bg-surface-2 text-xs transition-colors cursor-pointer">
                   <div className="font-semibold text-text-main">August 2024 Payrun Validated</div>
                   <div className="text-[11px] text-text-muted mt-0.5">22 employees ready for disbursement.</div>
                   <div className="text-[10px] text-text-muted/60 mt-1">2 hours ago</div>
                 </div>
-                <div className="p-3 hover:bg-surface-2 text-xs transition-colors cursor-pointer">
+                <div className="p-3 hover:bg-slate-100 dark:hover:bg-surface-2 text-xs transition-colors cursor-pointer">
                   <div className="font-semibold text-text-main">2 Anomaly Alerts Detected</div>
                   <div className="text-[11px] text-accent-amber mt-0.5">Salary deviation exceeds 20% threshold.</div>
                   <div className="text-[10px] text-text-muted/60 mt-1">5 hours ago</div>
@@ -256,7 +256,7 @@ export default function TopBar({ onOpenCommandSearch }) {
           </div>
 
           {/* Profile Dropdown */}
-          <div className="absolute top-full right-0 mt-1 bg-surface-3 border border-border-medium rounded-xl shadow-dropdown py-1.5 min-w-[200px] hidden group-hover:block z-50 animate-fade-in">
+          <div className="absolute top-full right-0 mt-1 bg-white dark:bg-[#131B2A] border border-slate-200 dark:border-border-medium rounded-xl shadow-2xl py-1.5 min-w-[210px] hidden group-hover:block z-[100] animate-fade-in">
             <div className="px-4 py-2 border-b border-border-subtle">
               <div className="text-xs font-bold text-text-main">{user?.name || 'User'}</div>
               <div className="text-[11px] text-text-muted truncate">{user?.email || 'admin@peoplepay360.com'}</div>
@@ -264,18 +264,18 @@ export default function TopBar({ onOpenCommandSearch }) {
                 <StatusPill size="xs" status={user?.role === 'admin' ? 'Admin Access' : 'Employee Access'} />
               </div>
             </div>
-            <Link to="/my-space" className="flex items-center gap-2.5 px-4 py-2 text-xs text-text-main hover:bg-surface-2 transition-colors">
+            <Link to="/my-space" className="flex items-center gap-2.5 px-4 py-2 text-xs text-text-main hover:bg-slate-100 dark:hover:bg-surface-2 transition-colors">
               <User className="w-3.5 h-3.5 text-accent-blue" />
               <span>My Space (Self-Service)</span>
             </Link>
-            <Link to="/admin/users" className="flex items-center gap-2.5 px-4 py-2 text-xs text-text-main hover:bg-surface-2 transition-colors">
+            <Link to="/admin/users" className="flex items-center gap-2.5 px-4 py-2 text-xs text-text-main hover:bg-slate-100 dark:hover:bg-surface-2 transition-colors">
               <Shield className="w-3.5 h-3.5 text-accent-purple" />
               <span>User Administration</span>
             </Link>
             <div className="border-t border-border-subtle my-1"></div>
             <button 
               onClick={handleLogout}
-              className="w-full flex items-center gap-2.5 px-4 py-2 text-xs text-accent-rose hover:bg-surface-2 transition-colors text-left"
+              className="w-full flex items-center gap-2.5 px-4 py-2 text-xs text-accent-rose hover:bg-slate-100 dark:hover:bg-surface-2 transition-colors text-left"
             >
               <LogOut className="w-3.5 h-3.5" />
               <span>Sign out</span>

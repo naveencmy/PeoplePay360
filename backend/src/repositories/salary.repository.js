@@ -30,7 +30,12 @@ class SalaryStructureRepository extends BaseRepository {
    */
   async getActiveStructures() {
     const result = await this.raw(
-      "SELECT * FROM salary_structures WHERE active = true AND deleted_at IS NULL ORDER BY name"
+      `SELECT s.*, 
+              COALESCE((SELECT COUNT(*) FROM salary_rules r WHERE r.structure_id = s.id AND r.active = true AND r.deleted_at IS NULL), 0)::int AS rules_count,
+              COALESCE((SELECT COUNT(*) FROM contracts c WHERE c.structure_id = s.id AND c.state = 'ACTIVE' AND c.deleted_at IS NULL), 0)::int AS contracts_count
+       FROM salary_structures s 
+       WHERE s.active = true AND s.deleted_at IS NULL 
+       ORDER BY s.name`
     );
     return result.rows;
   }

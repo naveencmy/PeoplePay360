@@ -20,14 +20,8 @@ export const PayslipsPage = () => {
   const [statusFilter, setStatusFilter] = useState('All');
   const { data: payslips = [], isLoading } = usePayslips({});
 
-  // Ensure default mock records if backend returns empty for immediate visual completeness
-  const sampleSlips = payslips.length > 0 ? payslips : [
-    { id: 1, employeeName: 'Eleanor Vance', employeeId: 'EMP-001', structure: 'Executive Leadership Structure', period: 'October 2026', gross: 120000, net: 105600, status: 'Paid' },
-    { id: 2, employeeName: 'Marcus Chen', employeeId: 'EMP-002', structure: 'Engineering Core Tier-2', period: 'October 2026', gross: 95000, net: 83800, status: 'Paid' },
-    { id: 3, employeeName: 'Sophia Patel', employeeId: 'EMP-003', structure: 'Product & Design Standard', period: 'October 2026', gross: 85000, net: 75200, status: 'Computed' },
-    { id: 4, employeeName: 'David Kim', employeeId: 'EMP-004', structure: 'Sales & Growth Commission', period: 'October 2026', gross: 70000, net: 61900, status: 'Draft' },
-    { id: 5, employeeName: 'Aisha Sharma', employeeId: 'EMP-005', structure: 'Engineering Core Tier-2', period: 'October 2026', gross: 92000, net: 81100, status: 'Paid' },
-  ];
+  // 100% Live PostgreSQL Data
+  const sampleSlips = payslips || [];
 
   const filteredSlips = sampleSlips.filter(s => {
     const matchesSearch = !search || 

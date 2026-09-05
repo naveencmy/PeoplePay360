@@ -30,11 +30,11 @@ export default function DashboardPage() {
   const handleExport = () => {
     const csvHeader = "Metric,Value\n";
     const csvRows = [
-      `Total Net Salary,${kpis?.totalSalary || '₹12,50,000'}`,
-      `Payslips Generated,${kpis?.payslips || '64'}`,
-      `Avg Salary,${kpis?.avgSalary || '₹48,500'}`,
-      `Approved Leave,${kpis?.timeOffDays || '14 days'}`,
-      `Attendance Health,${kpis?.attendanceHealth || 94}%`,
+      `Total Net Salary,${kpis?.totalSalary || '₹0'}`,
+      `Payslips Generated,${kpis?.payslips || '0'}`,
+      `Avg Salary,${kpis?.avgSalary || '₹0'}`,
+      `Approved Leave,${kpis?.timeOffDays || '0 days'}`,
+      `Attendance Health,${kpis?.attendanceHealth || 0}%`,
     ].join("\n");
     const blob = new Blob([csvHeader + csvRows], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
@@ -250,10 +250,10 @@ export default function DashboardPage() {
             <WalletCards className="w-4 h-4 text-blue-600 dark:text-blue-400" />
           </div>
           <div className="text-xl sm:text-2xl font-bold font-mono tracking-tight text-slate-900 dark:text-white">
-            {kpis?.totalSalary || '₹12,50,000'}
+            {kpis?.totalSalary || '₹0'}
           </div>
           <div className="mt-1 text-[11px] font-medium text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
-            <span>{kpis?.salaryDelta || '+4.2%'}</span>
+            <span>{kpis?.salaryDelta || 'Verified'}</span>
           </div>
         </div>
 
@@ -264,10 +264,10 @@ export default function DashboardPage() {
             <ReceiptText className="w-4 h-4 text-blue-600 dark:text-blue-400" />
           </div>
           <div className="text-xl sm:text-2xl font-bold font-mono tracking-tight text-slate-900 dark:text-white">
-            {kpis?.payslips || '64'}
+            {kpis?.payslips || '0'}
           </div>
           <div className="mt-1 text-[11px] text-slate-500 dark:text-slate-400 font-mono">
-            {kpis?.paidPayslips || 42} paid · {kpis?.pendingPayslips || 22} pending
+            {kpis?.paidPayslips || 0} paid · {kpis?.pendingPayslips || 0} pending
           </div>
         </div>
 
@@ -278,7 +278,7 @@ export default function DashboardPage() {
             <UsersRound className="w-4 h-4 text-blue-600 dark:text-blue-400" />
           </div>
           <div className="text-xl sm:text-2xl font-bold font-mono tracking-tight text-slate-900 dark:text-white">
-            {kpis?.avgSalary || '₹48,500'}
+            {kpis?.avgSalary || '₹0'}
           </div>
           <div className="mt-1 text-[11px] text-slate-400 dark:text-slate-500">
             Per active head
@@ -292,7 +292,7 @@ export default function DashboardPage() {
             <CalendarDays className="w-4 h-4 text-blue-600 dark:text-blue-400" />
           </div>
           <div className="text-xl sm:text-2xl font-bold font-mono tracking-tight text-slate-900 dark:text-white">
-            {kpis?.timeOffDays || '14 days'}
+            {kpis?.timeOffDays || '0 days'}
           </div>
           <div className="mt-1 text-[11px] text-slate-400 dark:text-slate-500">
             This cycle

@@ -6,7 +6,7 @@ async function seed() {
   const pool = getPool();
   const client = await pool.connect();
 
-  console.log('🌱 Seeding PostgreSQL database with real production entities...');
+  console.log(' Seeding PostgreSQL database with real production entities...');
 
   try {
     await client.query('BEGIN');
@@ -173,7 +173,7 @@ async function seed() {
     );
 
     await client.query('COMMIT');
-    console.log('✅ PostgreSQL database seeded successfully with 100% REAL entities!');
+    console.log(' PostgreSQL database seeded successfully with 100% REAL entities!');
     console.log('Demo Logins (password: demo123):');
     console.log(' - admin@company.com (Super Admin)');
     console.log(' - hrmanager@company.com (HR Admin)');
@@ -181,7 +181,7 @@ async function seed() {
     console.log(' - employee@company.com (Employee)');
   } catch (error) {
     await client.query('ROLLBACK');
-    console.error('❌ Seeding failed:', error);
+    console.error(' Seeding failed:', error);
     process.exit(1);
   } finally {
     client.release();

@@ -30,11 +30,22 @@ async function getKPIs(periodStart, periodEnd) {
     timeoffRepo.getTotalApprovedForPeriod(periodStart, periodEnd),
   ]);
 
+  let totalNetPaid = parseFloat(payslipSummary.total_net_paid) || 0;
+  let avgSalary = parseFloat(payslipSummary.avg_salary) || 0;
+  if (totalNetPaid === 0) {
+    const contractStats = await payslipRepo.raw(`
+      SELECT COALESCE(SUM(wage), 0) AS total, COALESCE(AVG(wage), 0) AS avg, COUNT(*) AS count
+      FROM contracts WHERE state = 'ACTIVE' AND deleted_at IS NULL
+    `);
+    totalNetPaid = parseFloat(contractStats.rows[0]?.total || 0);
+    avgSalary = parseFloat(contractStats.rows[0]?.avg || 0);
+  }
+
   const kpis = {
-    total_net_paid: parseFloat(payslipSummary.total_net_paid) || 0,
+    total_net_paid: totalNetPaid,
     payslips_generated: parseInt(payslipSummary.total_payslips) || 0,
     payslips_paid: parseInt(payslipSummary.paid_count) || 0,
-    average_salary: parseFloat(payslipSummary.avg_salary) || 0,
+    average_salary: avgSalary,
     approved_timeoff_days: parseFloat(timeoffSummary.total_days) || 0,
     timeoff_requests: parseInt(timeoffSummary.request_count) || 0,
     employees: employeeStats.reduce((acc, s) => {
@@ -87,7 +98,19 @@ async function getSalaryByDepartment(periodStart, periodEnd) {
   const cached = await getCache(cacheKey);
   if (cached) return cached;
 
-  const data = await payslipRepo.getSalaryByDepartment(periodStart, periodEnd);
+  let data = await payslipRepo.getSalaryByDepartment(periodStart, periodEnd);
+  if (!data || data.length === 0) {
+    const deptWages = await payslipRepo.raw(`
+      SELECT e.department, COUNT(DISTINCT e.id) as employee_count, 
+             COALESCE(SUM(c.wage), 0) as total_net, COALESCE(AVG(c.wage), 0) as avg_net
+      FROM employees e
+      JOIN contracts c ON c.employee_id = e.id AND c.state = 'ACTIVE' AND c.deleted_at IS NULL
+      WHERE e.status = 'ACTIVE' AND e.deleted_at IS NULL
+      GROUP BY e.department
+      ORDER BY total_net DESC
+    `);
+    data = deptWages.rows;
+  }
 
   const result = data.map((d) => ({
     department: d.department || 'Unassigned',

@@ -80,6 +80,15 @@ export const PayrunDetailPage = () => {
   const steps = ['Draft', 'Computed', 'Validated', 'Paid'];
   const currentStepIndex = steps.indexOf(currentStatus);
 
+  const payslipsList = Array.isArray(payrun?.payslips) ? payrun.payslips : [];
+  const computedGross = payslipsList.reduce((sum, p) => sum + (parseFloat(p.gross) || 0), 0);
+  const computedDeductions = payslipsList.reduce((sum, p) => sum + (parseFloat(p.total_deductions) || 0), 0);
+  const computedNet = payslipsList.reduce((sum, p) => sum + (parseFloat(p.net) || 0), 0);
+
+  const totalGrossFormatted = payrun?.totalGross || `₹${computedGross.toLocaleString('en-IN')}`;
+  const totalDeductionsFormatted = payrun?.totalDeductions || `₹${computedDeductions.toLocaleString('en-IN')}`;
+  const totalNetFormatted = payrun?.totalNet || `₹${computedNet.toLocaleString('en-IN')}`;
+
   if (isLoading) {
     return (
       <div className="p-16 text-center text-text-muted flex flex-col items-center gap-3">
@@ -227,7 +236,7 @@ export const PayrunDetailPage = () => {
           <div>
             <div className="text-[11px] font-semibold uppercase tracking-wider text-text-muted">Total Gross</div>
             <div className="text-xl font-bold font-mono text-text-main">
-              {payrun?.totalGross || '₹14,50,000'}
+              {totalGrossFormatted}
             </div>
           </div>
         </Card>
@@ -239,7 +248,7 @@ export const PayrunDetailPage = () => {
           <div>
             <div className="text-[11px] font-semibold uppercase tracking-wider text-text-muted">Statutory Deductions</div>
             <div className="text-xl font-bold font-mono text-accent-rose">
-              {payrun?.totalDeductions || '₹1,85,000'}
+              {totalDeductionsFormatted}
             </div>
           </div>
         </Card>
@@ -251,7 +260,7 @@ export const PayrunDetailPage = () => {
           <div>
             <div className="text-[11px] font-semibold uppercase tracking-wider text-text-muted">Net Bank Payout</div>
             <div className="text-xl font-bold font-mono text-accent-emerald">
-              {payrun?.totalNet || '₹12,65,000'}
+              {totalNetFormatted}
             </div>
           </div>
         </Card>

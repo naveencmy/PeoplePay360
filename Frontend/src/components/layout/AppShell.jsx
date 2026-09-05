@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Outlet } from 'react-router-dom';
 import TopBar from './TopBar';
 import CommandSearch from '../ui/CommandSearch';
-import useThemeStore from '../../store/themeStore';
+import useThemeStore from '@/store/themeStore';
 
 export default function AppShell() {
   const [commandSearchOpen, setCommandSearchOpen] = useState(false);
@@ -26,7 +26,7 @@ export default function AppShell() {
       
       <div className="flex flex-1 overflow-hidden">
         <main className="flex-1 overflow-y-auto bg-surface-0 min-h-[calc(100vh-3.5rem)]">
-          <div className="max-w-[1600px] mx-auto p-4 sm:p-6 lg:p-8 animate-fade-in">
+          <div className="max-w-[1600px] mx-auto p-4 sm:p-6 lg:p-8">
             <Outlet />
           </div>
         </main>

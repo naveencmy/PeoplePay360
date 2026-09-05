@@ -1,30 +1,75 @@
-import React, { useState } from 'react';
-import { useCreateSimulation, useRunSimulation } from '@/hooks/useSimulator';
+import React, { useState, useEffect, useMemo } from 'react';
+import { useRunSimulation } from '@/hooks/useSimulator';
+import { useSalaryStructures, useSalaryRules } from '@/hooks/useSalary';
+import { useEmployees } from '@/hooks/useEmployees';
 import PageHeader from '@/components/layout/PageHeader';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
-import Input from '@/components/ui/Input';
 import Select from '@/components/ui/Select';
 import StatusPill from '@/components/ui/StatusPill';
-import MoneyDisplay from '@/components/ui/MoneyDisplay';
 import { 
-  SlidersHorizontal, Sparkles, TrendingUp, TrendingDown, 
-  AlertCircle, ShieldCheck, Plus, Trash2, RotateCcw, Play, Check 
+  SlidersHorizontal, Sparkles, AlertCircle, ShieldCheck, Plus, Trash2, RotateCcw, Play 
 } from 'lucide-react';
 
 export const SimulatorPage = () => {
-  const [structure, setStructure] = useState('Standard 2024');
+  const { data: structures = [], isLoading: isLoadingStructures } = useSalaryStructures();
+  const { data: employees = [] } = useEmployees();
+
+  const [selectedStructureId, setSelectedStructureId] = useState('');
+  const [targetEmployees, setTargetEmployees] = useState('All');
+
+  // Default structure selection once structures load
+  useEffect(() => {
+    if (structures.length > 0 && !selectedStructureId) {
+      setSelectedStructureId(structures[0].id);
+    }
+  }, [structures, selectedStructureId]);
+
+  const { data: rules = [] } = useSalaryRules(selectedStructureId);
+
+  // Dynamic departments from live database employees
+  const departmentCounts = useMemo(() => {
+    const counts = {};
+    employees.forEach(emp => {
+      const d = emp.department || 'Operations';
+      counts[d] = (counts[d] || 0) + 1;
+    });
+    return counts;
+  }, [employees]);
+
   const [overrides, setOverrides] = useState([
     { id: 1, name: 'Basic Pay %', current: 40, newValue: 45 },
     { id: 2, name: 'HRA Rate %', current: 20, newValue: 20 },
     { id: 3, name: 'Performance Bonus %', current: 10, newValue: 15 }
   ]);
-  const [targetEmployees, setTargetEmployees] = useState('All');
-  
+
+  // Update baseline rule overrides when real rules load for selected structure
+  useEffect(() => {
+    if (rules && rules.length > 0) {
+      const percentageRules = rules.filter(r => 
+        r.computation_type === 'PERCENTAGE' || r.type === 'Percentage' || ['BASIC', 'HRA', 'BONUS', 'ALLOWANCE'].includes(r.code)
+      );
+      if (percentageRules.length > 0) {
+        setOverrides(percentageRules.map((r, i) => {
+          const pct = r.amount ? Math.round(parseFloat(r.amount) <= 1 ? parseFloat(r.amount) * 100 : parseFloat(r.amount)) : 20;
+          return {
+            id: r.id || i + 1,
+            name: r.name || `${r.code} %`,
+            current: pct,
+            newValue: pct
+          };
+        }));
+      }
+    }
+  }, [rules]);
+
   const { mutate: runSim, data: results, isPending: isLoading, reset } = useRunSimulation();
 
   const handleAddOverride = () => {
-    setOverrides([...overrides, { id: Date.now(), name: 'Special Allowance %', current: 10, newValue: 12 }]);
+    setOverrides([
+      ...overrides, 
+      { id: Date.now(), name: 'Special Allowance %', current: 10, newValue: 12 }
+    ]);
   };
 
   const handleUpdateOverride = (id, val) => {
@@ -36,8 +81,14 @@ export const SimulatorPage = () => {
   };
 
   const handleRun = () => {
-    runSim({ structure, overrides, targetEmployees });
+    runSim({ 
+      structure: selectedStructureId, 
+      overrides, 
+      targetEmployees 
+    });
   };
+
+  const activeStructure = structures.find(s => s.id === selectedStructureId);
 
   return (
     <div className="space-y-6 pb-12 animate-fade-in">
@@ -55,7 +106,7 @@ export const SimulatorPage = () => {
         <div className="flex items-center gap-2.5">
           <ShieldCheck className="w-5 h-5 shrink-0" />
           <span>
-            <strong>Isolated Sandbox Environment:</strong> Modeling calculations are executed strictly in volatile memory. No active employee contracts, payrun drafts, or tax ledger entries are altered.
+            <strong>Isolated Sandbox Environment:</strong> Modeling calculations are executed strictly against active PostgreSQL employee contracts in memory. No active employee contracts, payrun drafts, or tax ledger entries are altered.
           </span>
         </div>
         <StatusPill status="Draft" text="Simulation Active" />
@@ -85,60 +136,72 @@ export const SimulatorPage = () => {
               <label className="block text-xs font-semibold uppercase tracking-wider text-text-muted mb-1.5">
                 Baseline Salary Framework
               </label>
-              <Select 
-                value={structure} 
-                onChange={e => setStructure(e.target.value)}
-                className="bg-surface-3 border-border-subtle text-xs"
-              >
-                <option value="Standard 2024">Standard Enterprise Framework (2026)</option>
-                <option value="Executive Package">Executive Tier Framework</option>
-                <option value="Contractor Scale">Fixed Contractors Scale</option>
-              </Select>
+              {isLoadingStructures ? (
+                <div className="text-xs text-text-muted">Loading structures...</div>
+              ) : (
+                <Select 
+                  value={selectedStructureId} 
+                  onChange={e => setSelectedStructureId(e.target.value)}
+                  className="bg-surface-3 border-border-subtle text-xs"
+                >
+                  {structures.map(s => (
+                    <option key={s.id} value={s.id}>
+                      {s.name} ({s.rulesCount || s.rules?.length || 0} rules)
+                    </option>
+                  ))}
+                </Select>
+              )}
             </div>
 
             {/* Slider Overrides Bank */}
             <div className="space-y-4 pt-1">
               <span className="text-[11px] font-semibold uppercase tracking-wider text-text-muted block">
-                Rule Formula Modifiers
+                Rule Formula Modifiers ({activeStructure?.name || 'Active Framework'})
               </span>
 
-              {overrides.map(rule => (
-                <div key={rule.id} className="p-3.5 rounded-xl bg-surface-1 border border-border-subtle space-y-2">
-                  <div className="flex justify-between items-center text-xs">
-                    <span className="font-semibold text-text-main">{rule.name}</span>
-                    <button 
-                      onClick={() => handleRemoveOverride(rule.id)} 
-                      className="text-text-muted hover:text-accent-rose transition-colors p-1"
-                      title="Remove parameter"
-                    >
-                      <Trash2 size={13} />
-                    </button>
-                  </div>
-
-                  <div className="flex items-center gap-3">
-                    <div className="text-[11px] font-mono text-text-muted shrink-0 w-16">
-                      Base: {rule.current}%
+              {overrides.length === 0 ? (
+                <div className="text-xs text-text-muted italic p-3 bg-surface-1 rounded-xl">
+                  No formula modifiers configured. Click "Add Override" to test a rule shift.
+                </div>
+              ) : (
+                overrides.map(rule => (
+                  <div key={rule.id} className="p-3.5 rounded-xl bg-surface-1 border border-border-subtle space-y-2">
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="font-semibold text-text-main">{rule.name}</span>
+                      <button 
+                        onClick={() => handleRemoveOverride(rule.id)} 
+                        className="text-text-muted hover:text-accent-rose transition-colors p-1"
+                        title="Remove parameter"
+                      >
+                        <Trash2 size={13} />
+                      </button>
                     </div>
-                    <input 
-                      type="range" 
-                      min="0" 
-                      max="100" 
-                      value={rule.newValue} 
-                      onChange={(e) => handleUpdateOverride(rule.id, e.target.value)}
-                      className="flex-1 accent-accent-blue h-1.5 bg-surface-3 rounded-lg cursor-pointer"
-                    />
-                    <div className="flex items-center gap-1 shrink-0">
+
+                    <div className="flex items-center gap-3">
+                      <div className="text-[11px] font-mono text-text-muted shrink-0 w-16">
+                        Base: {rule.current}%
+                      </div>
                       <input 
-                        type="number" 
+                        type="range" 
+                        min="0" 
+                        max="100" 
                         value={rule.newValue} 
                         onChange={(e) => handleUpdateOverride(rule.id, e.target.value)}
-                        className="w-14 bg-surface-3 border border-border-subtle rounded-lg py-1 px-1.5 text-center font-mono text-xs font-bold text-text-main outline-none focus:border-accent-blue"
+                        className="flex-1 accent-accent-blue h-1.5 bg-surface-3 rounded-lg cursor-pointer"
                       />
-                      <span className="text-xs text-text-muted font-mono">%</span>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <input 
+                          type="number" 
+                          value={rule.newValue} 
+                          onChange={(e) => handleUpdateOverride(rule.id, e.target.value)}
+                          className="w-14 bg-surface-3 border border-border-subtle rounded-lg py-1 px-1.5 text-center font-mono text-xs font-bold text-text-main outline-none focus:border-accent-blue"
+                        />
+                        <span className="text-xs text-text-muted font-mono">%</span>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                ))
+              )}
             </div>
 
             <div>
@@ -150,15 +213,18 @@ export const SimulatorPage = () => {
                 onChange={e => setTargetEmployees(e.target.value)}
                 className="bg-surface-3 border-border-subtle text-xs"
               >
-                <option value="All">All Active Employees (45 personnel)</option>
-                <option value="Engineering">Engineering Department (18 personnel)</option>
-                <option value="Sales">Sales & Growth Team (12 personnel)</option>
+                <option value="All">All Active Employees ({employees.length} personnel)</option>
+                {Object.entries(departmentCounts).map(([dept, count]) => (
+                  <option key={dept} value={dept}>
+                    {dept} Department ({count} {count === 1 ? 'personnel' : 'personnel'})
+                  </option>
+                ))}
               </Select>
             </div>
 
             <Button 
               onClick={handleRun} 
-              disabled={isLoading}
+              disabled={isLoading || structures.length === 0}
               variant="primary"
               className="w-full h-11 text-xs font-bold uppercase tracking-wider gap-2 shadow-glow"
             >
@@ -185,7 +251,7 @@ export const SimulatorPage = () => {
               <div className="w-12 h-12 border-3 border-accent-blue/30 border-t-accent-blue rounded-full animate-spin mb-4" />
               <h3 className="font-bold text-sm text-text-main">Recomputing Salary Structure Graph</h3>
               <p className="text-xs text-text-muted mt-1">
-                Evaluating formula changes across {targetEmployees === 'All' ? 'all 45' : 'selected'} employee profiles...
+                Evaluating formula changes across {targetEmployees === 'All' ? `all ${employees.length}` : targetEmployees} live employee contracts...
               </p>
             </Card>
           ) : (
@@ -195,32 +261,32 @@ export const SimulatorPage = () => {
                 <Card className="p-3.5">
                   <span className="text-[10px] font-semibold uppercase text-text-muted block">Current Monthly</span>
                   <div className="text-lg font-bold font-mono text-text-main mt-1">
-                    {results.currentTotal || '₹14,50,000'}
+                    {results.currentTotal}
                   </div>
                 </Card>
 
                 <Card className="p-3.5">
                   <span className="text-[10px] font-semibold uppercase text-text-muted block">Projected Monthly</span>
                   <div className="text-lg font-bold font-mono text-accent-blue mt-1">
-                    {results.projectedTotal || '₹15,74,000'}
+                    {results.projectedTotal}
                   </div>
                 </Card>
 
                 <Card className="p-3.5">
                   <span className="text-[10px] font-semibold uppercase text-text-muted block">Net Delta / Mo</span>
                   <div className={`text-lg font-bold font-mono mt-1 ${
-                    (results.deltaValue || 1) > 0 ? 'text-accent-rose' : 'text-accent-emerald'
+                    results.deltaValue > 0 ? 'text-accent-rose' : results.deltaValue < 0 ? 'text-accent-emerald' : 'text-text-main'
                   }`}>
-                    {(results.deltaValue || 1) > 0 ? '+' : ''}{results.deltaFormatted || '₹1,24,000'}
+                    {results.deltaValue > 0 ? '+' : ''}{results.deltaFormatted}
                   </div>
                 </Card>
 
                 <Card className="p-3.5">
                   <span className="text-[10px] font-semibold uppercase text-text-muted block">Annualized Impact</span>
                   <div className={`text-lg font-bold font-mono mt-1 ${
-                    (results.annualDeltaValue || 1) > 0 ? 'text-accent-rose' : 'text-accent-emerald'
+                    results.annualDeltaValue > 0 ? 'text-accent-rose' : results.annualDeltaValue < 0 ? 'text-accent-emerald' : 'text-text-main'
                   }`}>
-                    {(results.annualDeltaValue || 1) > 0 ? '+' : ''}{results.annualDeltaFormatted || '₹14,88,000'}
+                    {results.annualDeltaValue > 0 ? '+' : ''}{results.annualDeltaFormatted}
                   </div>
                 </Card>
               </div>
@@ -230,7 +296,7 @@ export const SimulatorPage = () => {
                 <div className="flex items-center justify-between mb-4">
                   <div>
                     <h3 className="text-xs font-semibold uppercase tracking-wider text-text-main">
-                      Department Allocation Impact
+                      Department Allocation Impact ({results.affectedCount} contracts evaluated)
                     </h3>
                     <p className="text-[11px] text-text-muted">Direct liability shift by operational team</p>
                   </div>
@@ -257,19 +323,14 @@ export const SimulatorPage = () => {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border-subtle">
-                      {(results.departments || [
-                        { name: 'Engineering', headcount: 18, current: '₹7,20,000', projected: '₹7,85,000', deltaValue: 65000, deltaFormatted: '₹65,000' },
-                        { name: 'Product & Design', headcount: 8, current: '₹3,40,000', projected: '₹3,68,000', deltaValue: 28000, deltaFormatted: '₹28,000' },
-                        { name: 'Sales & Growth', headcount: 12, current: '₹2,90,000', projected: '₹3,15,000', deltaValue: 25000, deltaFormatted: '₹25,000' },
-                        { name: 'Operations & HR', headcount: 7, current: '₹1,00,000', projected: '₹1,06,000', deltaValue: 6000, deltaFormatted: '₹6,000' },
-                      ]).map((dept, i) => (
+                      {(results.departments || []).map((dept, i) => (
                         <tr key={i} className="hover:bg-surface-3/50 transition-colors">
                           <td className="py-3 px-3 font-semibold text-text-main">{dept.name}</td>
                           <td className="py-3 px-3 text-center font-mono text-text-muted">{dept.headcount}</td>
                           <td className="py-3 px-3 text-right font-mono text-text-secondary">{dept.current}</td>
                           <td className="py-3 px-3 text-right font-mono font-semibold text-text-main">{dept.projected}</td>
                           <td className={`py-3 px-3 text-right font-mono font-bold ${
-                            dept.deltaValue > 0 ? 'text-accent-rose' : 'text-accent-emerald'
+                            dept.deltaValue > 0 ? 'text-accent-rose' : dept.deltaValue < 0 ? 'text-accent-emerald' : 'text-text-muted'
                           }`}>
                             {dept.deltaValue > 0 ? '+' : ''}{dept.deltaFormatted}
                           </td>

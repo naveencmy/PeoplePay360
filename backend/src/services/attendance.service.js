@@ -116,7 +116,10 @@ async function bulkImport(records) {
  * Get attendance anomalies
  */
 async function getAnomalies(periodStart, periodEnd, threshold = 50) {
-  return attendanceRepo.getAnomalies(periodStart, periodEnd, threshold);
+  const now = new Date();
+  const start = periodStart || new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+  const end = periodEnd || new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
+  return attendanceRepo.getAnomalies(start, end, threshold);
 }
 
 /**
