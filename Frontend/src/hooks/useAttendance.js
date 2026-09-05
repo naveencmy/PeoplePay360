@@ -8,12 +8,20 @@ export const useAttendance = (filters = {}) => {
   });
 };
 
+export const useTodayAttendance = (employeeId) => {
+  return useQuery({
+    queryKey: ['attendance-today', employeeId],
+    queryFn: () => api.getTodayAttendanceStatus(employeeId),
+  });
+};
+
 export const useCheckin = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: api.checkin,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['attendance'] });
+      queryClient.invalidateQueries({ queryKey: ['attendance-today'] });
     },
   });
 };
@@ -24,6 +32,7 @@ export const useCheckout = () => {
     mutationFn: api.checkout,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['attendance'] });
+      queryClient.invalidateQueries({ queryKey: ['attendance-today'] });
     },
   });
 };
@@ -34,6 +43,7 @@ export const useUpdateAttendance = () => {
     mutationFn: api.updateAttendance,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['attendance'] });
+      queryClient.invalidateQueries({ queryKey: ['attendance-today'] });
     },
   });
 };

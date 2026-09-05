@@ -6,6 +6,9 @@
   "scripts": {
     "start": "node src/app.js",
     "dev": "nodemon src/app.js",
+    "migrate": "node src/scripts/migrate.js",
+    "seed": "node src/scripts/seed.js",
+    "db:setup": "node src/scripts/migrate.js && node src/scripts/seed.js",
     "test": "jest --verbose --forceExit",
     "test:unit": "jest --testPathPattern=tests/unit --verbose --forceExit",
     "test:integration": "jest --testPathPattern=tests/integration --verbose --forceExit",

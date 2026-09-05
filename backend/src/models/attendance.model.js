@@ -5,14 +5,18 @@ const { z } = require('zod');
 // ─────────────────────────────────────────────────────────────────────────────
 
 const checkInSchema = z.object({
-  employee_id: z.string().uuid('Invalid employee ID'),
-  check_in: z.string().optional(), // ISO timestamp, defaults to now
+  employee_id: z.string().uuid('Invalid employee ID').optional(),
+  check_in: z.string().optional(),
+  time: z.union([z.string(), z.date()]).optional(),
+  timestamp: z.union([z.string(), z.date()]).optional(),
   notes: z.string().max(500).optional(),
 });
 
 const checkOutSchema = z.object({
-  employee_id: z.string().uuid('Invalid employee ID'),
-  check_out: z.string().optional(), // ISO timestamp, defaults to now
+  employee_id: z.string().uuid('Invalid employee ID').optional(),
+  check_out: z.string().optional(),
+  time: z.union([z.string(), z.date()]).optional(),
+  timestamp: z.union([z.string(), z.date()]).optional(),
   notes: z.string().max(500).optional(),
 });
 

@@ -71,6 +71,7 @@ function generateTokenPair(user) {
     userId: user.id,
     email: user.email,
     role: user.role,
+    employeeId: user.employee_id || null,
   });
   const refreshToken = generateRefreshToken({
     userId: user.id,

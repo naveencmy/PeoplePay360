@@ -70,7 +70,7 @@ export const useAuthStore = create(
               username: credentials.email || credentials.username || 'user',
               name: credentials.name || (credentials.email ? credentials.email.split('@')[0] : 'User'),
               role: credentials.role,
-              employeeId: credentials.employeeId || 'EMP-001',
+              employeeId: credentials.employeeId || credentials.employee_id || null,
               email: credentials.email || ''
             },
             token: credentials.token,
@@ -96,7 +96,7 @@ export const useAuthStore = create(
             username, 
             name: username.split('@')[0] || 'User', 
             role, 
-            employeeId: 'EMP-001',
+            employeeId: credentials.employeeId || credentials.employee_id || null,
             email: username.includes('@') ? username : `${username}@company.com`
           },
           token: credentials.token,

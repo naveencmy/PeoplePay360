@@ -2,10 +2,11 @@ const Redis = require('ioredis');
 const { loadEnv } = require('./env');
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Redis Client — singleton for caching & session management
+// Redis Client — resilient singleton for caching with zero-latency offline bypass
 // ─────────────────────────────────────────────────────────────────────────────
 
 let redis = null;
+let loggedOfflineWarning = false;
 
 function getRedis() {
   if (!redis) {
@@ -15,22 +16,30 @@ function getRedis() {
       port: env.REDIS_PORT,
       password: env.REDIS_PASSWORD || undefined,
       db: env.REDIS_DB,
-      maxRetriesPerRequest: 3,
+      enableOfflineQueue: false, // Do NOT queue commands when disconnected; fail fast
+      maxRetriesPerRequest: 1,   // Fail immediately instead of delaying HTTP requests
+      connectTimeout: 1000,      // Fast timeout on connection attempts
       retryStrategy(times) {
-        const delay = Math.min(times * 200, 3000);
-        return delay;
+        // Back off gently if Redis isn't running locally (every 30s)
+        return Math.min(times * 5000, 30000);
       },
-      lazyConnect: true,
+      lazyConnect: false,
     });
 
-    redis.on('connect', () => {
-      if (env.NODE_ENV === 'development') {
-        console.log('🔴 Redis connected');
-      }
+    redis.on('ready', () => {
+      loggedOfflineWarning = false;
+      console.log('🟢 Redis cache connected & active');
     });
 
     redis.on('error', (err) => {
-      console.error('❌ Redis error:', err.message);
+      if (!loggedOfflineWarning) {
+        console.warn(`⚠️ Redis cache unavailable (${err.code || err.message}). Operating in bypass mode (direct PostgreSQL queries).`);
+        loggedOfflineWarning = true;
+      }
+    });
+
+    redis.on('close', () => {
+      // Disconnected
     });
   }
   return redis;
@@ -45,10 +54,12 @@ function getRedis() {
 async function setCache(key, data, ttl = 300) {
   try {
     const client = getRedis();
+    if (!client || client.status !== 'ready') {
+      return; // Fast bypass if offline
+    }
     await client.setex(key, ttl, JSON.stringify(data));
-  } catch (err) {
-    console.error('⚠️ Redis setCache error:', err.message);
-    // Cache failures should not break the app — degrade gracefully
+  } catch (_err) {
+    // Fail silently — cache degradation should never break requests
   }
 }
 
@@ -60,10 +71,12 @@ async function setCache(key, data, ttl = 300) {
 async function getCache(key) {
   try {
     const client = getRedis();
+    if (!client || client.status !== 'ready') {
+      return null; // Fast bypass if offline (0ms overhead)
+    }
     const data = await client.get(key);
     return data ? JSON.parse(data) : null;
-  } catch (err) {
-    console.error('⚠️ Redis getCache error:', err.message);
+  } catch (_err) {
     return null;
   }
 }
@@ -75,6 +88,9 @@ async function getCache(key) {
 async function invalidateCache(pattern) {
   try {
     const client = getRedis();
+    if (!client || client.status !== 'ready') {
+      return; // Fast bypass if offline
+    }
     if (pattern.includes('*')) {
       const keys = await client.keys(pattern);
       if (keys.length > 0) {
@@ -83,8 +99,8 @@ async function invalidateCache(pattern) {
     } else {
       await client.del(pattern);
     }
-  } catch (err) {
-    console.error('⚠️ Redis invalidateCache error:', err.message);
+  } catch (_err) {
+    // Fail silently
   }
 }
 
@@ -93,9 +109,13 @@ async function invalidateCache(pattern) {
  */
 async function closeRedis() {
   if (redis) {
-    await redis.quit();
+    try {
+      await redis.quit();
+    } catch (_e) {
+      redis.disconnect();
+    }
     redis = null;
-    console.log('🔴 Redis connection closed');
+    loggedOfflineWarning = false;
   }
 }
 

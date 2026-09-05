@@ -28,6 +28,7 @@ function authenticate(req, res, next) {
       userId: decoded.userId,
       email: decoded.email,
       role: decoded.role,
+      employeeId: decoded.employeeId || null,
     };
     next();
   } catch (error) {

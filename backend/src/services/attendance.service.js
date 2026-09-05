@@ -119,6 +119,20 @@ async function getAnomalies(periodStart, periodEnd, threshold = 50) {
   return attendanceRepo.getAnomalies(periodStart, periodEnd, threshold);
 }
 
+/**
+ * Get today's attendance status for an employee
+ */
+async function getTodayStatus(employeeId) {
+  const openRecord = await attendanceRepo.getOpenCheckIn(employeeId);
+  const todayRecord = await attendanceRepo.getTodayRecord(employeeId);
+  return {
+    openRecord,
+    todayRecord,
+    isCheckedIn: !!openRecord,
+    isCompleted: !!todayRecord && !!todayRecord.check_out,
+  };
+}
+
 module.exports = {
   checkIn,
   checkOut,
@@ -126,4 +140,5 @@ module.exports = {
   getAttendanceRecords,
   bulkImport,
   getAnomalies,
+  getTodayStatus,
 };

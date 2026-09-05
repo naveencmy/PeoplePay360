@@ -9,6 +9,7 @@ router.use(authenticate);
 
 router.post('/check-in', validate({ body: checkInSchema }), ctrl.checkIn);
 router.post('/check-out', validate({ body: checkOutSchema }), ctrl.checkOut);
+router.get('/today', ctrl.getTodayStatus);
 router.get('/summary', validate({ query: attendanceSummaryQuerySchema }), ctrl.getSummary);
 router.get('/anomalies', authorize('ADMIN', 'HR', 'MANAGER'), ctrl.getAnomalies);
 router.get('/', ctrl.getRecords);

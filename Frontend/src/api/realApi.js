@@ -235,18 +235,43 @@ export const updateAttendance = async (data) => {
   return data;
 };
 
-export const checkin = async (employeeId) => {
-  return await apiClient.post('/attendance/check-in', {
-    employee_id: employeeId,
-    timestamp: new Date().toISOString(),
+export const getTodayAttendanceStatus = async (employeeId) => {
+  const res = await apiClient.get('/attendance/today', {
+    params: employeeId ? { employee_id: employeeId } : {},
   });
+  return res?.data || res;
 };
 
-export const checkout = async (employeeId) => {
-  return await apiClient.post('/attendance/check-out', {
-    employee_id: employeeId,
-    timestamp: new Date().toISOString(),
-  });
+export const checkin = async (params) => {
+  let employeeId = typeof params === 'string' ? params : params?.employee_id;
+  if (!employeeId || typeof employeeId !== 'string') {
+    try {
+      const auth = JSON.parse(localStorage.getItem('auth-storage') || '{}');
+      employeeId = auth?.state?.user?.employeeId;
+    } catch (_e) {}
+  }
+  const payload = {
+    ...(employeeId ? { employee_id: employeeId } : {}),
+    check_in: params?.time ? new Date(params.time).toISOString() : new Date().toISOString(),
+    notes: params?.notes,
+  };
+  return await apiClient.post('/attendance/check-in', payload);
+};
+
+export const checkout = async (params) => {
+  let employeeId = typeof params === 'string' ? params : params?.employee_id;
+  if (!employeeId || typeof employeeId !== 'string') {
+    try {
+      const auth = JSON.parse(localStorage.getItem('auth-storage') || '{}');
+      employeeId = auth?.state?.user?.employeeId;
+    } catch (_e) {}
+  }
+  const payload = {
+    ...(employeeId ? { employee_id: employeeId } : {}),
+    check_out: params?.time ? new Date(params.time).toISOString() : new Date().toISOString(),
+    notes: params?.notes,
+  };
+  return await apiClient.post('/attendance/check-out', payload);
 };
 
 // ═══ TIME OFF ═══

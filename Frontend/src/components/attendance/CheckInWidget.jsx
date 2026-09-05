@@ -1,15 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { Card, Button, StatusPill } from '@/components/ui';
-import { useCheckin, useCheckout } from '@/hooks/useAttendance';
+import { useCheckin, useCheckout, useTodayAttendance } from '@/hooks/useAttendance';
+import useAuthStore from '@/store/authStore';
 import { format, differenceInMinutes } from 'date-fns';
 import { toast } from 'react-hot-toast';
 
 export default function CheckInWidget() {
+  const { user } = useAuthStore();
   const [currentTime, setCurrentTime] = useState(new Date());
   const [status, setStatus] = useState('idle'); // idle, checked-in, checked-out
   const [checkInTime, setCheckInTime] = useState(null);
   const [checkOutTime, setCheckOutTime] = useState(null);
 
+  const { data: todayStatus } = useTodayAttendance(user?.employeeId);
   const checkinMutation = useCheckin();
   const checkoutMutation = useCheckout();
 
@@ -24,29 +27,52 @@ export default function CheckInWidget() {
     return () => clearInterval(timer);
   }, []);
 
+  useEffect(() => {
+    if (todayStatus) {
+      if (todayStatus.openRecord) {
+        setStatus('checked-in');
+        setCheckInTime(new Date(todayStatus.openRecord.check_in));
+      } else if (todayStatus.todayRecord && todayStatus.todayRecord.check_out) {
+        setStatus('checked-out');
+        setCheckInTime(new Date(todayStatus.todayRecord.check_in));
+        setCheckOutTime(new Date(todayStatus.todayRecord.check_out));
+      } else {
+        setStatus('idle');
+      }
+    }
+  }, [todayStatus]);
+
   const handleCheckIn = async () => {
     try {
       const now = new Date();
-      await checkinMutation.mutateAsync({ time: now });
+      await checkinMutation.mutateAsync({
+        employee_id: user?.employeeId,
+        time: now.toISOString(),
+      });
       setCheckInTime(now);
       setStatus('checked-in');
       
       const isLate = differenceInMinutes(now, scheduleStart) > 30;
       toast.success(`Checked in successfully${isLate ? ' (Late)' : ''}!`);
     } catch (error) {
-      toast.error('Failed to check in');
+      const msg = error?.response?.data?.message || error?.message || 'Failed to check in';
+      toast.error(msg);
     }
   };
 
   const handleCheckOut = async () => {
     try {
       const now = new Date();
-      await checkoutMutation.mutateAsync({ time: now });
+      await checkoutMutation.mutateAsync({
+        employee_id: user?.employeeId,
+        time: now.toISOString(),
+      });
       setCheckOutTime(now);
       setStatus('checked-out');
       toast.success('Checked out successfully!');
     } catch (error) {
-      toast.error('Failed to check out');
+      const msg = error?.response?.data?.message || error?.message || 'Failed to check out';
+      toast.error(msg);
     }
   };
 

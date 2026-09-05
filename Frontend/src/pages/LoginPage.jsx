@@ -30,6 +30,7 @@ export default function LoginPage() {
         name: `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.name || email.split('@')[0],
         email: user.email,
         role: mappedRole,
+        employeeId: user.employee_id || null,
         token: token,
       });
 
