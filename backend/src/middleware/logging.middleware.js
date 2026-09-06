@@ -1,12 +1,14 @@
 const { v4: uuidv4 } = require('uuid');
+const { sanitizeLogPayload } = require('../utils/masking.utils');
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Request Logging Middleware — correlation ID + structured logging
+// Enterprise Structured JSON Request Logging Middleware
+// Features: Correlation ID propagation, ISO timestamps, PII masking, latency tracking
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
  * Attaches a unique correlation ID to every request for tracing
- * Also logs request start/end with timing
+ * Also logs request start/end with durationMs and sanitized data
  */
 function requestLogger(req, res, next) {
   // Attach correlation ID (use existing header if provided, or generate new)
@@ -15,34 +17,41 @@ function requestLogger(req, res, next) {
 
   const start = Date.now();
 
-  // Log request start
-  const logEntry = {
-    correlationId: req.correlationId,
-    method: req.method,
-    path: req.originalUrl,
-    ip: req.ip,
-    userAgent: req.get('user-agent'),
-    userId: req.user?.userId || 'anonymous',
-  };
-
   // Log on response finish
   res.on('finish', () => {
-    const duration = Date.now() - start;
-    const level = res.statusCode >= 500 ? 'error' : res.statusCode >= 400 ? 'warn' : 'info';
+    const durationMs = Date.now() - start;
+    const statusCode = res.statusCode || 200;
+    const level = statusCode >= 500 ? 'error' : statusCode >= 400 ? 'warn' : 'info';
 
-    const completedLog = {
-      ...logEntry,
-      statusCode: res.statusCode,
-      duration: `${duration}ms`,
+    const structuredLog = {
+      timestamp: new Date().toISOString(),
       level,
+      correlationId: req.correlationId,
+      userId: req.user?.userId || req.user?.id || 'anonymous',
+      method: req.method,
+      path: req.originalUrl || req.url,
+      statusCode,
+      durationMs,
+      ip: req.ip || req.connection?.remoteAddress,
+      userAgent: req.get('user-agent'),
     };
 
+    // Include sanitized request metadata if present and applicable
+    if (req.body && Object.keys(req.body).length > 0) {
+      structuredLog.body = sanitizeLogPayload(req.body);
+    }
+    if (req.query && Object.keys(req.query).length > 0) {
+      structuredLog.query = sanitizeLogPayload(req.query);
+    }
+
+    const logJson = JSON.stringify(structuredLog);
+
     if (level === 'error') {
-      console.error('📊 Request:', JSON.stringify(completedLog));
+      console.error(logJson);
     } else if (level === 'warn') {
-      console.warn('📊 Request:', JSON.stringify(completedLog));
-    } else if (process.env.NODE_ENV === 'development') {
-      console.log('📊 Request:', JSON.stringify(completedLog));
+      console.warn(logJson);
+    } else if (process.env.NODE_ENV !== 'test') {
+      console.log(logJson);
     }
   });
 

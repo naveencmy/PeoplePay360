@@ -12,6 +12,7 @@ const { VALID_TRANSITIONS } = require('../models/payrun.model');
 const { loadEnv } = require('../config/env');
 const { withTransaction } = require('../config/database');
 const { invalidateCache } = require('../config/redis');
+const { payrollComputeDurationSeconds } = require('../config/metrics');
 const boss = require('../jobs/queue');
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -109,6 +110,10 @@ async function computePayrun(payrunId, userId) {
   if (employees.length === 0) {
     throw AppError.badRequest('No matching active employees found for this payrun');
   }
+
+  const endTimer = payrollComputeDurationSeconds.startTimer({
+    structure_id: payrun.structure_id || 'DEFAULT',
+  });
 
   return withTransaction(async (client) => {
     // Clean up any existing payslips for this payrun before computation
@@ -233,9 +238,12 @@ async function computePayrun(payrunId, userId) {
           warnings: results.warnings.length,
         },
       });
+      endTimer({ status: 'COMPUTED' });
     } else if (results.errors.length > 0) {
+      endTimer({ status: 'FAILED' });
       throw AppError.badRequest('No payslips could be computed. Check errors.', results.errors);
     } else {
+      endTimer({ status: 'FAILED' });
       const summaryReason = results.warnings.map(w => `${w.name}: ${w.issue}`).slice(0, 3).join('; ');
       throw AppError.badRequest(`No payslips could be computed: ${summaryReason || 'All employees skipped.'}`, results.warnings);
     }

@@ -65,20 +65,32 @@ class EmployeeRepository extends BaseRepository {
   }
 
   /**
-   * Full-text search on employee fields
+   * High-Performance PostgreSQL Full-Text Search utilizing plainto_tsquery and ts_rank_cd
    */
   async search(searchTerm, limit = 20) {
+    if (!searchTerm || !searchTerm.trim()) {
+      return [];
+    }
+
+    const trimmed = searchTerm.trim();
+
     const result = await this.raw(
-      `SELECT * FROM employees 
-       WHERE deleted_at IS NULL 
+      `SELECT e.*,
+              ts_rank_cd(e.search_vector, plainto_tsquery('english', $1)) AS rank
+       FROM employees e
+       WHERE e.deleted_at IS NULL
          AND (
-           first_name ILIKE $1 OR last_name ILIKE $1 
-           OR email ILIKE $1 OR employee_code ILIKE $1
-           OR department ILIKE $1 OR designation ILIKE $1
+           e.search_vector @@ plainto_tsquery('english', $1)
+           OR e.employee_code ILIKE $2
+           OR e.first_name ILIKE $2
+           OR e.last_name ILIKE $2
+           OR e.email ILIKE $2
+           OR e.department ILIKE $2
+           OR e.designation ILIKE $2
          )
-       ORDER BY first_name 
-       LIMIT $2`,
-      [`%${searchTerm}%`, limit]
+       ORDER BY rank DESC, e.first_name ASC
+       LIMIT $3`,
+      [trimmed, `%${trimmed}%`, limit]
     );
     return result.rows;
   }

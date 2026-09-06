@@ -1,5 +1,5 @@
 -- ═══════════════════════════════════════════════════════════════════════════════
--- PeoplePay360 — Production Database Schema (PostgreSQL 16)
+-- Migration 001: Initial Core Relational Schema
 -- ═══════════════════════════════════════════════════════════════════════════════
 
 -- Enable UUID extension
@@ -43,18 +43,10 @@ CREATE TABLE IF NOT EXISTS employees (
   pan_number VARCHAR(20),
   uan_number VARCHAR(20),
   status VARCHAR(20) DEFAULT 'ACTIVE',
-  search_vector tsvector GENERATED ALWAYS AS (
-    setweight(to_tsvector('english', coalesce(first_name, '') || ' ' || coalesce(last_name, '')), 'A') ||
-    setweight(to_tsvector('english', coalesce(email, '')), 'B') ||
-    setweight(to_tsvector('english', coalesce(department, '') || ' ' || coalesce(designation, '')), 'C')
-  ) STORED,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   deleted_at TIMESTAMP WITH TIME ZONE
 );
-
--- Full-text search GIN index on employees
-CREATE INDEX IF NOT EXISTS idx_employees_fts ON employees USING GIN(search_vector);
 
 -- Salary Structures Table
 CREATE TABLE IF NOT EXISTS salary_structures (
@@ -73,9 +65,9 @@ CREATE TABLE IF NOT EXISTS salary_rules (
   structure_id UUID NOT NULL REFERENCES salary_structures(id) ON DELETE CASCADE,
   name VARCHAR(150) NOT NULL,
   code VARCHAR(50) NOT NULL,
-  category VARCHAR(50) NOT NULL, -- BASIC, ALLOWANCE, GROSS, DEDUCTION, NET
+  category VARCHAR(50) NOT NULL,
   sequence INTEGER NOT NULL DEFAULT 10,
-  computation_type VARCHAR(50) NOT NULL, -- FIXED, PERCENTAGE, FORMULA
+  computation_type VARCHAR(50) NOT NULL,
   computation_basis VARCHAR(50),
   amount NUMERIC(15, 2) DEFAULT 0,
   formula TEXT,
@@ -156,49 +148,6 @@ CREATE TABLE IF NOT EXISTS payruns (
   deleted_at TIMESTAMP WITH TIME ZONE
 );
 
--- Range-Partitioned Payslips Table
-CREATE TABLE IF NOT EXISTS payslips (
-  id UUID DEFAULT gen_random_uuid(),
-  employee_id UUID NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
-  payrun_id UUID NOT NULL REFERENCES payruns(id) ON DELETE CASCADE,
-  contract_id UUID REFERENCES contracts(id),
-  period_start DATE NOT NULL,
-  period_end DATE NOT NULL,
-  worked_days NUMERIC(5, 2) NOT NULL,
-  total_days NUMERIC(5, 2) NOT NULL,
-  lines JSONB NOT NULL DEFAULT '[]',
-  gross NUMERIC(15, 2) NOT NULL DEFAULT 0,
-  total_deductions NUMERIC(15, 2) NOT NULL DEFAULT 0,
-  net NUMERIC(15, 2) NOT NULL DEFAULT 0,
-  status VARCHAR(50) DEFAULT 'COMPUTED',
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  deleted_at TIMESTAMP WITH TIME ZONE,
-  PRIMARY KEY (id, period_start)
-) PARTITION BY RANGE (period_start);
-
--- Payslips Partitions
-CREATE TABLE IF NOT EXISTS payslips_default PARTITION OF payslips DEFAULT;
-CREATE TABLE IF NOT EXISTS payslips_2024_q1 PARTITION OF payslips FOR VALUES FROM ('2024-01-01') TO ('2024-04-01');
-CREATE TABLE IF NOT EXISTS payslips_2024_q2 PARTITION OF payslips FOR VALUES FROM ('2024-04-01') TO ('2024-07-01');
-CREATE TABLE IF NOT EXISTS payslips_2024_q3 PARTITION OF payslips FOR VALUES FROM ('2024-07-01') TO ('2024-10-01');
-CREATE TABLE IF NOT EXISTS payslips_2024_q4 PARTITION OF payslips FOR VALUES FROM ('2024-10-01') TO ('2025-01-01');
-
-CREATE TABLE IF NOT EXISTS payslips_2025_q1 PARTITION OF payslips FOR VALUES FROM ('2025-01-01') TO ('2025-04-01');
-CREATE TABLE IF NOT EXISTS payslips_2025_q2 PARTITION OF payslips FOR VALUES FROM ('2025-04-01') TO ('2025-07-01');
-CREATE TABLE IF NOT EXISTS payslips_2025_q3 PARTITION OF payslips FOR VALUES FROM ('2025-07-01') TO ('2025-10-01');
-CREATE TABLE IF NOT EXISTS payslips_2025_q4 PARTITION OF payslips FOR VALUES FROM ('2025-10-01') TO ('2026-01-01');
-
-CREATE TABLE IF NOT EXISTS payslips_2026_q1 PARTITION OF payslips FOR VALUES FROM ('2026-01-01') TO ('2026-04-01');
-CREATE TABLE IF NOT EXISTS payslips_2026_q2 PARTITION OF payslips FOR VALUES FROM ('2026-04-01') TO ('2026-07-01');
-CREATE TABLE IF NOT EXISTS payslips_2026_q3 PARTITION OF payslips FOR VALUES FROM ('2026-07-01') TO ('2026-10-01');
-CREATE TABLE IF NOT EXISTS payslips_2026_q4 PARTITION OF payslips FOR VALUES FROM ('2026-10-01') TO ('2027-01-01');
-
-CREATE TABLE IF NOT EXISTS payslips_2027_q1 PARTITION OF payslips FOR VALUES FROM ('2027-01-01') TO ('2027-04-01');
-CREATE TABLE IF NOT EXISTS payslips_2027_q2 PARTITION OF payslips FOR VALUES FROM ('2027-04-01') TO ('2027-07-01');
-CREATE TABLE IF NOT EXISTS payslips_2027_q3 PARTITION OF payslips FOR VALUES FROM ('2027-07-01') TO ('2027-10-01');
-CREATE TABLE IF NOT EXISTS payslips_2027_q4 PARTITION OF payslips FOR VALUES FROM ('2027-10-01') TO ('2028-01-01');
-
 -- Audit Logs Table
 CREATE TABLE IF NOT EXISTS audit_logs (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -230,7 +179,4 @@ CREATE TABLE IF NOT EXISTS working_schedules (
 CREATE INDEX IF NOT EXISTS idx_contracts_employee ON contracts(employee_id, state);
 CREATE INDEX IF NOT EXISTS idx_attendance_employee_date ON attendance(employee_id, date);
 CREATE INDEX IF NOT EXISTS idx_timeoff_employee_period ON timeoff_requests(employee_id, date_from, date_to);
-CREATE INDEX IF NOT EXISTS idx_payslips_payrun ON payslips(payrun_id);
-CREATE INDEX IF NOT EXISTS idx_payslips_employee ON payslips(employee_id);
-CREATE INDEX IF NOT EXISTS idx_payslips_period ON payslips(period_start, period_end);
 CREATE INDEX IF NOT EXISTS idx_audit_entity ON audit_logs(entity_type, entity_id);

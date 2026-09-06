@@ -10,18 +10,30 @@ let pool = null;
 function getPool() {
   if (!pool) {
     const env = loadEnv();
-    pool = new Pool({
-      host: env.DB_HOST,
-      port: env.DB_PORT,
-      database: env.DB_NAME,
-      user: env.DB_USER,
-      password: env.DB_PASSWORD,
-      ssl: env.DB_SSL === true ? { rejectUnauthorized: false } : false,
-      min: env.DB_POOL_MIN,
-      max: env.DB_POOL_MAX,
-      idleTimeoutMillis: 30000,
-      connectionTimeoutMillis: 5000,
-    });
+    const isSsl = env.DB_SSL === true || (env.DATABASE_URL && env.DATABASE_URL.includes('sslmode=require'));
+    const poolConfig = env.DATABASE_URL
+      ? {
+          connectionString: env.DATABASE_URL,
+          ssl: isSsl ? { rejectUnauthorized: false } : false,
+          min: env.DB_POOL_MIN,
+          max: env.DB_POOL_MAX,
+          idleTimeoutMillis: 30000,
+          connectionTimeoutMillis: 5000,
+        }
+      : {
+          host: env.DB_HOST,
+          port: env.DB_PORT,
+          database: env.DB_NAME,
+          user: env.DB_USER,
+          password: env.DB_PASSWORD,
+          ssl: env.DB_SSL === true ? { rejectUnauthorized: false } : false,
+          min: env.DB_POOL_MIN,
+          max: env.DB_POOL_MAX,
+          idleTimeoutMillis: 30000,
+          connectionTimeoutMillis: 5000,
+        };
+
+    pool = new Pool(poolConfig);
 
     pool.on('error', (err) => {
       console.error('❌ Unexpected PostgreSQL pool error:', err.message);

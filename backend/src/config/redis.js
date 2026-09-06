@@ -119,4 +119,29 @@ async function closeRedis() {
   }
 }
 
-module.exports = { getRedis, setCache, getCache, invalidateCache, closeRedis };
+/**
+ * Test Redis health for readiness checks
+ */
+async function checkHealth() {
+  const start = Date.now();
+  try {
+    const client = getRedis();
+    if (!client) {
+      return { status: 'down', latencyMs: 0, error: 'Client not initialized' };
+    }
+    const pong = await Promise.race([
+      client.ping(),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 2000)),
+    ]);
+    const latencyMs = Date.now() - start;
+    if (pong === 'PONG') {
+      return { status: 'healthy', latencyMs };
+    }
+    return { status: 'degraded', latencyMs, response: pong };
+  } catch (err) {
+    return { status: 'unavailable', latencyMs: Date.now() - start, error: err.message };
+  }
+}
+
+module.exports = { getRedis, setCache, getCache, invalidateCache, closeRedis, checkHealth };
+
