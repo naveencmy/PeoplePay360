@@ -12,6 +12,7 @@ import { Card } from '@/components/ui/Card';
 import EmptyState from '@/components/ui/EmptyState';
 import MoneyDisplay from '@/components/ui/MoneyDisplay';
 import { PayrunWizard } from '@/components/payrun/PayrunWizard';
+import useAuthStore from '@/store/authStore';
 
 export const PayrunsPage = () => {
   const navigate = useNavigate();
@@ -28,6 +29,9 @@ export const PayrunsPage = () => {
   const computedCount = payruns.filter(p => (p.status || '').toLowerCase() === 'computed').length;
   const validatedCount = payruns.filter(p => (p.status || '').toLowerCase() === 'validated').length;
   const paidCount = payruns.filter(p => (p.status || '').toLowerCase() === 'paid').length;
+  const user = useAuthStore(s => s.user);
+  const role = (user?.role || '').toUpperCase();
+  const canManage = role === 'ADMIN' || role === 'HR';
 
   return (
     <div className="space-y-6 pb-12 animate-fade-in">
@@ -39,15 +43,17 @@ export const PayrunsPage = () => {
           { label: 'Payruns' }
         ]}
         actions={
-          <Button 
-            onClick={() => setIsWizardOpen(true)} 
-            variant="primary" 
-            size="sm"
-            className="gap-2 shadow-sm"
-          >
-            <Plus className="w-4 h-4" />
-            <span>New Payrun Cycle</span>
-          </Button>
+          canManage && (
+            <Button 
+              onClick={() => setIsWizardOpen(true)} 
+              variant="primary" 
+              size="sm"
+              className="gap-2 shadow-sm"
+            >
+              <Plus className="w-4 h-4" />
+              <span>New Payrun Cycle</span>
+            </Button>
+          )
         }
       />
 
@@ -121,8 +127,8 @@ export const PayrunsPage = () => {
           icon={Play}
           title="No payruns found"
           description={statusFilter !== 'All' ? `No payruns currently in ${statusFilter} state.` : "Create your first payrun to begin calculating salaries."}
-          actionLabel="Create Payrun Cycle"
-          onAction={() => setIsWizardOpen(true)}
+          actionLabel={canManage ? "Create Payrun Cycle" : undefined}
+          onAction={canManage ? () => setIsWizardOpen(true) : undefined}
         />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
@@ -152,7 +158,7 @@ export const PayrunsPage = () => {
 
                   <div className="flex items-center gap-1.5 text-xs text-text-muted mt-2 font-mono">
                     <Calendar className="w-3.5 h-3.5 text-text-muted shrink-0" />
-                    <span>{payrun.periodStart} → {payrun.periodEnd}</span>
+                    <span>{payrun.periodStart && payrun.periodEnd ? `${payrun.periodStart} → ${payrun.periodEnd}` : 'Standard Monthly Cycle'}</span>
                   </div>
                 </div>
 

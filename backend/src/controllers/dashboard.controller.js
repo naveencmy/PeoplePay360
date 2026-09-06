@@ -29,9 +29,33 @@ async function getMonthlyTrend(req, res) {
   sendSuccess(res, trend);
 }
 
+async function getAttendanceTrend(req, res) {
+  const trend = await dashboardService.getAttendanceTrend();
+  sendSuccess(res, trend);
+}
+
+async function getTimeOffSummary(req, res) {
+  const summary = await dashboardService.getTimeOffSummary();
+  sendSuccess(res, summary);
+}
+
+async function getPayrollStatusCounts(req, res) {
+  const counts = await dashboardService.getPayrollStatusCounts();
+  sendSuccess(res, counts);
+}
+
 async function refreshCache(req, res) {
   const result = await dashboardService.refreshDashboardCache();
   sendSuccess(res, result);
 }
 
-module.exports = { getKPIs, getAttendanceHealth, getSalaryByDepartment, getMonthlyTrend, refreshCache };
+module.exports = {
+  getKPIs,
+  getAttendanceHealth,
+  getSalaryByDepartment,
+  getMonthlyTrend,
+  getAttendanceTrend,
+  getTimeOffSummary,
+  getPayrollStatusCounts,
+  refreshCache,
+};

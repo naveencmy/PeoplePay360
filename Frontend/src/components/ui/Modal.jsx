@@ -44,38 +44,43 @@ export const Modal = ({
     >
       {/* Backdrop */}
       <div 
-        className="fixed inset-0 bg-black/70 backdrop-blur-sm transition-opacity"
+        className="fixed inset-0 bg-black/60 dark:bg-black/75 backdrop-blur-md transition-opacity"
         onClick={onClose}
         aria-hidden="true"
       />
       
       {/* Modal Dialog */}
       <div 
-        className={`relative bg-surface-2 border border-border-medium rounded-modal shadow-dropdown w-full ${sizes[size] || sizes.md} overflow-hidden z-10 animate-scale-in flex flex-col ${className}`}
+        className={`relative bg-surface-1 dark:bg-[#121826] border border-slate-200/80 dark:border-white/10 rounded-2xl shadow-2xl shadow-black/40 w-full ${sizes[size] || sizes.md} overflow-hidden z-10 animate-scale-in flex flex-col transition-all duration-200 ring-1 ring-black/5 dark:ring-white/5 ${className}`}
       >
+        {/* Subtle Brand Accent Line */}
+        <div className="h-1 w-full bg-gradient-to-r from-accent-blue via-accent-cyan to-accent-purple shrink-0 opacity-80" />
+
         {title && (
-          <div className="px-6 py-4.5 border-b border-border-subtle bg-surface-1 flex items-center justify-between">
+          <div className="px-6 py-4 border-b border-border-subtle bg-surface-1 dark:bg-[#0F1420] flex items-center justify-between shrink-0">
             <div>
-              <h3 id="modal-title" className="text-base font-bold text-text-main tracking-tight">{title}</h3>
+              <h3 id="modal-title" className="text-base font-bold text-text-main tracking-tight flex items-center gap-2">
+                {title}
+              </h3>
               {subtitle && <p className="text-xs text-text-muted mt-0.5">{subtitle}</p>}
             </div>
             <button 
               type="button"
               onClick={onClose}
-              className="p-1.5 rounded-lg text-text-muted hover:text-text-main hover:bg-surface-3 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-blue min-w-[36px] min-h-[36px] flex items-center justify-center"
+              className="p-1.5 rounded-xl text-text-muted hover:text-text-main hover:bg-surface-3 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-blue min-w-[32px] min-h-[32px] flex items-center justify-center border border-transparent hover:border-border-subtle"
               aria-label="Close dialog"
             >
-              <X className="w-5 h-5" />
+              <X className="w-4 h-4" />
             </button>
           </div>
         )}
         
-        <div className="p-6 max-h-[75vh] overflow-y-auto text-text-secondary space-y-4">
+        <div className="p-6 max-h-[75vh] overflow-y-auto text-text-secondary">
           {children}
         </div>
 
         {footer && (
-          <div className="px-6 py-3.5 border-t border-border-subtle bg-surface-1/70 flex items-center justify-end gap-3">
+          <div className="px-6 py-4 border-t border-border-subtle bg-surface-1/80 dark:bg-[#0F1420]/80 flex items-center justify-end gap-3 shrink-0">
             {footer}
           </div>
         )}

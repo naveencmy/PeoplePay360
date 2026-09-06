@@ -5,11 +5,19 @@ import {
   SlidersHorizontal, BrainCircuit, Shield, User, ArrowRight, X, Plus
 } from 'lucide-react';
 
+import useAuthStore from '@/store/authStore';
+
 export const CommandSearch = ({ isOpen, onClose }) => {
   const [query, setQuery] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
   const navigate = useNavigate();
   const inputRef = useRef(null);
+  const { user } = useAuthStore();
+  const role = (user?.role || 'EMPLOYEE').toUpperCase();
+  const isAdminOrHR = role === 'ADMIN' || role === 'HR';
+  const isManager = role === 'MANAGER';
+  const isAuditor = role === 'AUDITOR';
+  const isEmployee = role === 'EMPLOYEE';
 
   useEffect(() => {
     if (isOpen) {
@@ -19,38 +27,31 @@ export const CommandSearch = ({ isOpen, onClose }) => {
     }
   }, [isOpen]);
 
-  const items = [
-    // Navigation Modules
-    { id: 'm-dash', title: 'Dashboard', category: 'Navigation', icon: WalletCards, path: '/dashboard' },
-    { id: 'm-emp', title: 'All Employees', category: 'Navigation', icon: Users, path: '/employees' },
-    { id: 'm-con', title: 'Contracts', category: 'Navigation', icon: Users, path: '/contracts' },
-    { id: 'm-att', title: 'Attendance Tracker', category: 'Navigation', icon: CalendarCheck, path: '/attendance' },
-    { id: 'm-tim', title: 'Time Off & Leave Requests', category: 'Navigation', icon: CalendarDays, path: '/time-off' },
-    { id: 'm-pay', title: 'Payruns & Processing', category: 'Navigation', icon: WalletCards, path: '/payruns' },
-    { id: 'm-slp', title: 'Employee Payslips', category: 'Navigation', icon: WalletCards, path: '/payslips' },
-    { id: 'm-str', title: 'Salary Structures & Rule Graph', category: 'Navigation', icon: SlidersHorizontal, path: '/salary-structures' },
-    { id: 'm-sim', title: 'Payroll What-If Simulator', category: 'Navigation', icon: SlidersHorizontal, path: '/simulator' },
-    { id: 'm-int', title: 'Payroll Intelligence Center', category: 'Navigation', icon: BrainCircuit, path: '/intelligence' },
-    { id: 'm-mys', title: 'My Space Self-Service', category: 'Navigation', icon: User, path: '/my-space' },
-    { id: 'm-adm', title: 'Admin & User Access', category: 'Navigation', icon: Shield, path: '/admin/users' },
+  const allItems = [
+    // Employee self-service
+    { id: 'm-mys', title: 'My Space (Personal Portal)', category: 'Self-Service', icon: User, path: '/my-space', roles: ['ADMIN', 'HR', 'MANAGER', 'AUDITOR', 'EMPLOYEE'] },
+    { id: 'm-att', title: isEmployee ? 'My Attendance' : 'Attendance Records', category: 'Time & Attendance', icon: CalendarCheck, path: '/attendance', roles: ['ADMIN', 'HR', 'MANAGER', 'AUDITOR', 'EMPLOYEE'] },
+    { id: 'm-tim', title: isEmployee ? 'My Leave Requests' : 'Time Off & Leaves', category: 'Time & Attendance', icon: CalendarDays, path: '/time-off', roles: ['ADMIN', 'HR', 'MANAGER', 'AUDITOR', 'EMPLOYEE'] },
+    { id: 'm-slp', title: isEmployee ? 'My Payslips & Statements' : 'All Payslips', category: 'Payroll', icon: WalletCards, path: '/payslips', roles: ['ADMIN', 'HR', 'MANAGER', 'AUDITOR', 'EMPLOYEE'] },
+    { id: 'a-lev', title: 'Request Time Off', category: 'Quick Action', icon: Plus, path: '/time-off', roles: ['ADMIN', 'HR', 'MANAGER', 'AUDITOR', 'EMPLOYEE'] },
 
-    // Quick Actions
-    { id: 'a-emp', title: 'Add New Employee', category: 'Quick Action', icon: Plus, path: '/employees' },
-    { id: 'a-run', title: 'Run Payroll Cycle', category: 'Quick Action', icon: Plus, path: '/payruns' },
-    { id: 'a-lev', title: 'Request Time Off', category: 'Quick Action', icon: Plus, path: '/time-off' },
-    { id: 'a-sim', title: 'Simulate Salary Hike', category: 'Quick Action', icon: SlidersHorizontal, path: '/simulator' },
+    // Enterprise / Management Only
+    { id: 'm-dash', title: isManager ? 'Team Dashboard' : 'Executive Dashboard', category: 'Navigation', icon: WalletCards, path: '/dashboard', roles: ['ADMIN', 'HR', 'MANAGER', 'AUDITOR'] },
+    { id: 'm-emp', title: isManager ? 'Direct Reports & Team' : 'All Employees Directory', category: 'Navigation', icon: Users, path: '/employees', roles: ['ADMIN', 'HR', 'MANAGER', 'AUDITOR'] },
+    { id: 'm-con', title: 'Contracts Register', category: 'HR Operations', icon: Users, path: '/contracts', roles: ['ADMIN', 'HR', 'AUDITOR'] },
+    { id: 'm-pay', title: 'Payrun Cycles & Processing', category: 'Payroll', icon: WalletCards, path: '/payruns', roles: ['ADMIN', 'HR', 'AUDITOR'] },
+    { id: 'm-str', title: 'Salary Structures & Rule Graph', category: 'Payroll', icon: SlidersHorizontal, path: '/salary-structures', roles: ['ADMIN', 'HR', 'AUDITOR'] },
+    { id: 'm-sim', title: 'Payroll What-If Simulator', category: 'Analytics', icon: SlidersHorizontal, path: '/simulator', roles: ['ADMIN', 'HR', 'AUDITOR'] },
+    { id: 'm-int', title: 'Payroll Intelligence & Compliance', category: 'Analytics', icon: BrainCircuit, path: '/intelligence', roles: ['ADMIN', 'HR', 'AUDITOR'] },
+    { id: 'm-adm', title: 'Identity & Access Governance', category: 'Administration', icon: Shield, path: '/admin/users', roles: ['ADMIN', 'HR'] },
 
-    // Employees Samples
-    { id: 'e-1', title: 'Rahul Sharma (Frontend Engineer)', category: 'Employees', icon: Users, path: '/employees/EMP-001' },
-    { id: 'e-2', title: 'Priya Patel (Backend Engineer)', category: 'Employees', icon: Users, path: '/employees/EMP-002' },
-    { id: 'e-3', title: 'Amit Singh (Engineering Manager)', category: 'Employees', icon: Users, path: '/employees/EMP-003' },
-    { id: 'e-5', title: 'Vikram Malhotra (Sales Manager)', category: 'Employees', icon: Users, path: '/employees/EMP-005' },
-
-    // Payruns Samples
-    { id: 'p-1', title: 'July 2024 Payroll (Paid)', category: 'Payruns', icon: WalletCards, path: '/payruns/PR-001' },
-    { id: 'p-2', title: 'August 2024 Payroll (Validated)', category: 'Payruns', icon: WalletCards, path: '/payruns/PR-002' },
-    { id: 'p-3', title: 'September 2024 Payroll (Draft)', category: 'Payruns', icon: WalletCards, path: '/payruns/PR-003' },
+    // Admin / HR Quick Actions
+    { id: 'a-emp', title: 'Add New Employee', category: 'Quick Action', icon: Plus, path: '/employees', roles: ['ADMIN', 'HR'] },
+    { id: 'a-run', title: 'Initiate Payroll Cycle', category: 'Quick Action', icon: Plus, path: '/payruns', roles: ['ADMIN', 'HR'] },
+    { id: 'a-sim', title: 'Simulate Compensation Hike', category: 'Quick Action', icon: SlidersHorizontal, path: '/simulator', roles: ['ADMIN', 'HR', 'AUDITOR'] },
   ];
+
+  const items = allItems.filter(item => item.roles.includes(role));
 
   const filtered = items.filter(item => 
     item.title.toLowerCase().includes(query.toLowerCase()) || 

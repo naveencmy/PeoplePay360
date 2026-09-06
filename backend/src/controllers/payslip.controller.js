@@ -1,14 +1,31 @@
 const payslipService = require('../services/payslip.service');
 const pdfService = require('../services/pdf.service');
 const emailService = require('../services/email.service');
+const userRepo = require('../repositories/user.repository');
 const { sendSuccess } = require('../utils/response.utils');
+const { AppError } = require('../middleware/error.middleware');
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Payslip Controller
 // ─────────────────────────────────────────────────────────────────────────────
 
+async function getAuthEmployeeId(req) {
+  if (req.user?.employeeId) return req.user.employeeId;
+  if (req.user?.userId) {
+    const user = await userRepo.findById(req.user.userId);
+    if (user?.employee_id) return user.employee_id;
+  }
+  return null;
+}
+
 async function getPayslip(req, res) {
   const payslip = await payslipService.getPayslip(req.params.id);
+  if (req.user.role === 'EMPLOYEE') {
+    const userEmpId = await getAuthEmployeeId(req);
+    if (!userEmpId || payslip.employee_id !== userEmpId) {
+      throw AppError.forbidden('You are not authorized to view this payslip');
+    }
+  }
   sendSuccess(res, payslip);
 }
 
@@ -18,12 +35,24 @@ async function getPayslipsByPayrun(req, res) {
 }
 
 async function getPayslipsByEmployee(req, res) {
+  if (req.user.role === 'EMPLOYEE') {
+    const userEmpId = await getAuthEmployeeId(req);
+    if (!userEmpId || req.params.employeeId !== userEmpId) {
+      throw AppError.forbidden('You are not authorized to view other employees payslips');
+    }
+  }
   const result = await payslipService.getPayslipsByEmployee(req.params.employeeId, req.query);
   sendSuccess(res, result.payslips, 'Payslips retrieved', 200, result.pagination);
 }
 
 async function downloadPDF(req, res) {
   const payslip = await payslipService.getPayslip(req.params.id);
+  if (req.user.role === 'EMPLOYEE') {
+    const userEmpId = await getAuthEmployeeId(req);
+    if (!userEmpId || payslip.employee_id !== userEmpId) {
+      throw AppError.forbidden('You are not authorized to download this payslip');
+    }
+  }
   const pdfBuffer = await pdfService.generatePayslipPDF(payslip);
 
   res.set({
@@ -66,6 +95,14 @@ async function bulkEmailPayslips(req, res) {
 }
 
 async function listPayslips(req, res) {
+  if (req.user.role === 'EMPLOYEE') {
+    const userEmpId = await getAuthEmployeeId(req);
+    if (!userEmpId) {
+      return sendSuccess(res, []);
+    }
+    const result = await payslipService.getPayslipsByEmployee(userEmpId, req.query);
+    return sendSuccess(res, result.payslips, 'Payslips retrieved', 200, result.pagination);
+  }
   if (req.query.payrun_id) {
     const payslips = await payslipService.getPayslipsByPayrun(req.query.payrun_id);
     return sendSuccess(res, payslips);

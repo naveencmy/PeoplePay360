@@ -62,19 +62,23 @@ class TimeOffRepository extends BaseRepository {
   }
 
   /**
-   * Get pending requests for a manager (by their employees)
+   * Get pending requests for a manager (by their employees), or all pending for ADMIN/HR
    */
-  async getPendingForManager(managerId) {
-    const result = await this.raw(
-      `SELECT t.*, e.first_name, e.last_name, e.department
+  async getPendingForManager(managerId = null) {
+    let sql = `SELECT t.*, e.first_name, e.last_name, e.department
        FROM timeoff_requests t
        JOIN employees e ON e.id = t.employee_id
-       WHERE e.manager_id = $1
-         AND t.status = 'PENDING'
-         AND t.deleted_at IS NULL
-       ORDER BY t.created_at DESC`,
-      [managerId]
-    );
+       WHERE t.status = 'PENDING'
+         AND t.deleted_at IS NULL`;
+    const params = [];
+
+    if (managerId) {
+      params.push(managerId);
+      sql += ` AND e.manager_id = $${params.length}`;
+    }
+
+    sql += ' ORDER BY t.created_at DESC';
+    const result = await this.raw(sql, params);
     return result.rows;
   }
 

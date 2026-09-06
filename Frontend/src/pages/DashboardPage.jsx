@@ -10,8 +10,12 @@ import {
 } from 'lucide-react';
 import { useDashboardKPIs, useDashboardCharts } from '@/hooks/useDashboard';
 import { useThemeStore } from '@/store/themeStore';
+import useAuthStore from '@/store/authStore';
 
 export default function DashboardPage() {
+  const { hasRole } = useAuthStore();
+  const canManage = hasRole('ADMIN', 'HR');
+
   const [period, setPeriod] = useState('This Month');
   const [department, setDepartment] = useState('All Departments');
   const [employeeType, setEmployeeType] = useState('All Types');
@@ -55,19 +59,15 @@ export default function DashboardPage() {
   };
 
   // 1. Salary Cost by Department data (Horizontal Bar)
-  const salaryByDeptData = charts?.salaryByDept?.length ? charts.salaryByDept.map(d => ({
+  const salaryByDeptData = (charts?.salaryByDept || []).map(d => ({
     name: d.name,
     value: d.value,
-    formatted: `₹${(d.value / 100000).toFixed(1)}L`
-  })) : [
-    { name: 'Engineering', value: 1840000, formatted: '₹18.4L' },
-    { name: 'Sales', value: 710000, formatted: '₹7.1L' },
-    { name: 'Product', value: 620000, formatted: '₹6.2L' },
-    { name: 'Operations', value: 450000, formatted: '₹4.5L' },
-  ];
+    formatted: `₹${(d.value / 100000).toFixed(1)}L`,
+    employee_count: d.employee_count || 0,
+  }));
 
-  // 2. Payroll Trend 6-month data
-  const payrollTrendData = charts?.salaryTrend?.length ? charts.salaryTrend.map((d, idx, arr) => {
+  // 2. Payroll Trend data
+  const payrollTrendData = (charts?.salaryTrend || []).map((d, idx, arr) => {
     const prev = idx > 0 ? arr[idx - 1].value : d.value;
     const pct = prev > 0 ? (((d.value - prev) / prev) * 100).toFixed(1) : '0.0';
     return {
@@ -76,40 +76,75 @@ export default function DashboardPage() {
       formatted: `₹${(d.value / 100000).toFixed(1)}L`,
       change: `${Number(pct) >= 0 ? '+' : ''}${pct}%`
     };
-  }) : [
-    { month: 'Apr', value: 1120000, formatted: '₹11.2L', change: '+2.0%' },
-    { month: 'May', value: 1180000, formatted: '₹11.8L', change: '+5.3%' },
-    { month: 'Jun', value: 1200000, formatted: '₹12.0L', change: '+1.7%' },
-    { month: 'Jul', value: 1250000, formatted: '₹12.5L', change: '+4.2%' },
-    { month: 'Aug', value: 1300000, formatted: '₹13.0L', change: '+4.0%' },
-    { month: 'Sep', value: 1300000, formatted: '₹13.0L', change: '0.0%' },
-  ];
+  });
 
-  // 3. Attendance Trend 7-day data (Replaces Donut)
-  const attendanceTrendData = [
-    { day: 'Mon', attendance: 94, late: 3 },
-    { day: 'Tue', attendance: 96, late: 2 },
-    { day: 'Wed', attendance: 92, late: 5 },
-    { day: 'Thu', attendance: 95, late: 3 },
-    { day: 'Fri', attendance: 97, late: 2 },
-    { day: 'Sat', attendance: 88, late: 1 },
-    { day: 'Sun', attendance: 90, late: 1 },
-  ];
+  // 3. Attendance Trend 7-day data
+  const attendanceTrendData = charts?.attendanceTrend || [];
+
+  const avgAttendance = attendanceTrendData.length > 0
+    ? Math.round(attendanceTrendData.reduce((sum, d) => sum + (d.attendance || 0), 0) / attendanceTrendData.length)
+    : 0;
 
   // 4. Time Off data
-  const timeOffData = [
-    { type: 'Paid Leave', approved: 12, pending: 2, balance: 140 },
-    { type: 'Sick Leave', approved: 4, pending: 1, balance: 65 },
-    { type: 'Casual Leave', approved: 6, pending: 0, balance: 48 },
-  ];
+  const timeOffData = charts?.timeOff?.breakdown || [];
+
+  const timeOffSummary = charts?.timeOff?.summary || {
+    approved: 0,
+    pending: 0,
+    available: '0d',
+  };
 
   // 5. Department table data
-  const departmentData = [
-    { name: 'Engineering', employees: 14, payroll: '₹18.4L' },
-    { name: 'Product & Design', employees: 5, payroll: '₹6.2L' },
-    { name: 'Sales', employees: 6, payroll: '₹7.1L' },
-    { name: 'Operations', employees: 4, payroll: '₹4.5L' },
-  ];
+  const departmentData = salaryByDeptData.map(d => ({
+    name: d.name,
+    employees: d.employee_count || 0,
+    payroll: d.formatted,
+  }));
+
+  const totalStaff = kpis?.totalEmployees || departmentData.reduce((acc, d) => acc + d.employees, 0);
+
+  // 6. Status counts
+  const statusCounts = charts?.statusCounts || {
+    paid: parseInt(kpis?.paidPayslips || 0, 10),
+    computed: parseInt(kpis?.pendingPayslips || 0, 10),
+    draft: 0,
+    warnings: 0,
+  };
+
+  // 7. Dynamic attention items
+  const attentionItems = [];
+  if (statusCounts.draft > 0) {
+    attentionItems.push({
+      text: `${statusCounts.draft} payrun${statusCounts.draft > 1 ? 's' : ''} in draft state`,
+      link: '/payruns',
+      color: 'bg-amber-500',
+    });
+  }
+  if (timeOffSummary.pending > 0) {
+    attentionItems.push({
+      text: `${timeOffSummary.pending} leave request${timeOffSummary.pending > 1 ? 's' : ''} pending approval`,
+      link: '/time-off',
+      color: 'bg-amber-500',
+    });
+  }
+  if (statusCounts.warnings > 0) {
+    attentionItems.push({
+      text: `${statusCounts.warnings} attendance checkout warning${statusCounts.warnings > 1 ? 's' : ''}`,
+      link: '/attendance',
+      color: 'bg-rose-500',
+    });
+  }
+  if (attentionItems.length === 0) {
+    attentionItems.push({
+      text: 'All workforce and payroll systems verified in sync',
+      link: '/payruns',
+      color: 'bg-emerald-500',
+    });
+  }
+
+  const attentionCount = attentionItems.filter(i => i.color !== 'bg-emerald-500').length;
+  const healthScore = Math.max(75, Math.min(100, 100 - (attentionCount * 3)));
+  const healthStatus = healthScore >= 90 ? 'Healthy' : 'Needs Review';
 
   return (
     <div className="space-y-4 pb-12 animate-fade-in max-w-[1600px] mx-auto text-slate-900 dark:text-slate-100">
@@ -133,12 +168,14 @@ export default function DashboardPage() {
             <span>Export</span>
           </button>
           
-          <Link to="/payruns">
-            <button className="h-8 px-3.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium transition-all shadow-sm flex items-center gap-1.5 active:scale-[0.99]">
-              <Play className="w-3 h-3 fill-current" />
-              <span>Run Payroll</span>
-            </button>
-          </Link>
+          {canManage && (
+            <Link to="/payruns">
+              <button className="h-8 px-3.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium transition-all shadow-sm flex items-center gap-1.5 active:scale-[0.99]">
+                <Play className="w-3 h-3 fill-current" />
+                <span>Run Payroll</span>
+              </button>
+            </Link>
+          )}
         </div>
       </div>
 
@@ -150,27 +187,27 @@ export default function DashboardPage() {
               <ShieldCheck className="w-3.5 h-3.5" />
             </div>
             <span className="text-slate-600 dark:text-slate-400">Payroll Health</span>
-            <span className="font-bold text-slate-900 dark:text-white font-mono">94 / 100</span>
+            <span className="font-bold text-slate-900 dark:text-white font-mono">{healthScore} / 100</span>
           </div>
 
           <span className="text-slate-300 dark:text-slate-700 hidden sm:inline">|</span>
 
-          <span className="inline-flex items-center gap-1.5 font-medium text-emerald-600 dark:text-emerald-400">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-            Healthy
+          <span className={`inline-flex items-center gap-1.5 font-medium ${healthScore >= 90 ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>
+            <span className={`w-1.5 h-1.5 rounded-full ${healthScore >= 90 ? 'bg-emerald-500' : 'bg-amber-500'}`} />
+            {healthStatus}
           </span>
 
           <span className="text-slate-300 dark:text-slate-700 hidden sm:inline">|</span>
 
-          <span className="text-amber-600 dark:text-amber-400 font-medium flex items-center gap-1">
-            <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-            3 Attention Items
+          <span className={`${attentionCount > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400'} font-medium flex items-center gap-1`}>
+            <span className={`w-1.5 h-1.5 rounded-full ${attentionCount > 0 ? 'bg-amber-500' : 'bg-emerald-500'}`} />
+            {attentionCount === 0 ? '0 Attention Items' : `${attentionCount} Attention Item${attentionCount === 1 ? '' : 's'}`}
           </span>
 
           <span className="text-slate-300 dark:text-slate-700 hidden sm:inline">|</span>
 
           <span className="text-slate-500 dark:text-slate-400">
-            Cycle in 4 days
+            {kpis?.totalEmployees || totalStaff} active staff
           </span>
         </div>
 
@@ -208,10 +245,9 @@ export default function DashboardPage() {
               className="bg-transparent text-slate-800 dark:text-slate-200 font-medium outline-none cursor-pointer text-xs"
             >
               <option value="All Departments">All Departments</option>
-              <option value="Engineering">Engineering</option>
-              <option value="Sales">Sales</option>
-              <option value="Product">Product</option>
-              <option value="Operations">Operations</option>
+              {departmentData.map((d) => (
+                <option key={d.name} value={d.name}>{d.name}</option>
+              ))}
             </select>
           </div>
 
@@ -306,10 +342,10 @@ export default function DashboardPage() {
             <CircleCheck className="w-4 h-4 text-blue-600 dark:text-blue-400" />
           </div>
           <div className="text-xl sm:text-2xl font-bold font-mono tracking-tight text-slate-900 dark:text-white">
-            {kpis?.attendanceHealth || 94}%
+            {kpis?.attendanceHealth || avgAttendance || 0}%
           </div>
           <div className="mt-1 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
-            +1.8%
+            Live Tracked
           </div>
         </div>
       </div>
@@ -454,38 +490,40 @@ export default function DashboardPage() {
             <div className="grid grid-cols-4 gap-2 py-2 border-b border-slate-100 dark:border-slate-800 text-center">
               <div>
                 <span className="text-[11px] text-slate-500 dark:text-slate-400 block">Paid</span>
-                <span className="text-sm font-bold font-mono text-emerald-600 dark:text-emerald-400">58</span>
+                <span className="text-sm font-bold font-mono text-emerald-600 dark:text-emerald-400">{statusCounts.paid}</span>
               </div>
               <div>
                 <span className="text-[11px] text-slate-500 dark:text-slate-400 block">Computed</span>
-                <span className="text-sm font-bold font-mono text-blue-600 dark:text-blue-400">4</span>
+                <span className="text-sm font-bold font-mono text-blue-600 dark:text-blue-400">{statusCounts.computed}</span>
               </div>
               <div>
                 <span className="text-[11px] text-slate-500 dark:text-slate-400 block">Draft</span>
-                <span className="text-sm font-bold font-mono text-amber-500">2</span>
+                <span className="text-sm font-bold font-mono text-amber-500">{statusCounts.draft}</span>
               </div>
               <div>
                 <span className="text-[11px] text-slate-500 dark:text-slate-400 block">Warnings</span>
-                <span className="text-sm font-bold font-mono text-rose-500">3</span>
+                <span className="text-sm font-bold font-mono text-rose-500">{statusCounts.warnings}</span>
               </div>
             </div>
           </div>
 
-          {/* Small clean alert list */}
+          {/* Dynamic alert list */}
           <div className="space-y-2 pt-2">
             <div className="text-[11px] font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
               Attention Items
             </div>
             
             <div className="space-y-1.5 text-xs">
-              <Link to="/intelligence" className="flex items-center gap-2 text-slate-700 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
-                <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
-                <span className="truncate">2 contracts pending salary review</span>
-              </Link>
-              <Link to="/intelligence" className="flex items-center gap-2 text-slate-700 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
-                <span className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0" />
-                <span className="truncate">1 missing check-out in Engineering</span>
-              </Link>
+              {attentionItems.map((item, idx) => (
+                <Link
+                  key={idx}
+                  to={item.link}
+                  className="flex items-center gap-2 text-slate-700 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                >
+                  <span className={`w-1.5 h-1.5 rounded-full ${item.color} shrink-0`} />
+                  <span className="truncate">{item.text}</span>
+                </Link>
+              ))}
             </div>
           </div>
 
@@ -508,8 +546,8 @@ export default function DashboardPage() {
               </h2>
             </div>
             <div className="flex items-baseline gap-1.5">
-              <span className="text-xl font-bold font-mono text-slate-900 dark:text-white">94%</span>
-              <span className="text-[11px] text-slate-500 dark:text-slate-400">Current average</span>
+              <span className="text-xl font-bold font-mono text-slate-900 dark:text-white">{avgAttendance}%</span>
+              <span className="text-[11px] text-slate-500 dark:text-slate-400">Current 7-day average</span>
             </div>
           </div>
 
@@ -530,7 +568,7 @@ export default function DashboardPage() {
                   stroke={chartTheme.text} 
                   fontSize={10} 
                   tickLine={false} 
-                  axisLine={false}
+                  axisLine={false} 
                   tickFormatter={(v) => `${v}%`}
                 />
                 <Tooltip
@@ -589,15 +627,15 @@ export default function DashboardPage() {
             <div className="grid grid-cols-3 gap-2 py-2 border-b border-slate-100 dark:border-slate-800 text-center text-xs mb-2">
               <div>
                 <span className="text-[10px] text-slate-500 dark:text-slate-400 block">Approved</span>
-                <span className="font-bold font-mono text-emerald-600 dark:text-emerald-400">12</span>
+                <span className="font-bold font-mono text-emerald-600 dark:text-emerald-400">{timeOffSummary.approved}</span>
               </div>
               <div>
                 <span className="text-[10px] text-slate-500 dark:text-slate-400 block">Pending</span>
-                <span className="font-bold font-mono text-amber-500">3</span>
+                <span className="font-bold font-mono text-amber-500">{timeOffSummary.pending}</span>
               </div>
               <div>
                 <span className="text-[10px] text-slate-500 dark:text-slate-400 block">Available</span>
-                <span className="font-bold font-mono text-slate-900 dark:text-white">343d</span>
+                <span className="font-bold font-mono text-slate-900 dark:text-white">{timeOffSummary.available}</span>
               </div>
             </div>
 
@@ -663,8 +701,8 @@ export default function DashboardPage() {
           </div>
 
           <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[11px] text-slate-400">
-            <span>4 active departments</span>
-            <span className="font-mono font-medium text-slate-600 dark:text-slate-400">29 total staff</span>
+            <span>{departmentData.length} active department{departmentData.length === 1 ? '' : 's'}</span>
+            <span className="font-mono font-medium text-slate-600 dark:text-slate-400">{totalStaff} total staff</span>
           </div>
         </div>
       </div>

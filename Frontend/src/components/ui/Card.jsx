@@ -10,13 +10,14 @@ export const Card = ({
   actions,
   hoverable = false,
   glow = false,
+  accent = false,
   ...props
 }) => {
   const isClickable = Boolean(onClick);
 
   return (
     <div 
-      className={`bg-surface-2 border border-border-subtle rounded-card shadow-card flex flex-col transition-all duration-150 ${
+      className={`bg-surface-2 border border-border-subtle rounded-2xl shadow-card flex flex-col transition-all duration-200 ease-out overflow-hidden ${
         glow ? 'border-accent-blue/30 shadow-glow' : ''
       } ${
         isClickable || hoverable 
@@ -26,6 +27,11 @@ export const Card = ({
       onClick={onClick}
       {...props}
     >
+      {/* Optional top accent gradient bar */}
+      {accent && (
+        <div className="h-0.5 w-full bg-gradient-to-r from-accent-blue via-accent-cyan to-accent-purple shrink-0 opacity-70" />
+      )}
+
       {(title || subtitle || actions) && (
         <div className="px-5 py-4 border-b border-border-subtle flex justify-between items-center gap-4">
           <div>
@@ -45,7 +51,7 @@ export const Card = ({
       </div>
       
       {footer && (
-        <div className="px-5 py-3.5 border-t border-border-subtle bg-surface-1/50 rounded-b-card text-xs text-text-muted">
+        <div className="px-5 py-3.5 border-t border-border-subtle bg-surface-1/50 rounded-b-2xl text-xs text-text-muted">
           {footer}
         </div>
       )}

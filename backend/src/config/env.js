@@ -15,7 +15,7 @@ const envSchema = z.object({
   DB_NAME: z.string().default('peoplepay360'),
   DB_USER: z.string().default('postgres'),
   DB_PASSWORD: z.string().default('postgres'),
-  DB_SSL: z.union([z.boolean(), z.string()]).transform(v => v === true || v === 'true' || v === '1').default(false),
+  DB_SSL: z.preprocess((val) => val === true || val === 'true' || val === '1', z.boolean()).default(false),
   DB_POOL_MIN: z.coerce.number().default(2),
   DB_POOL_MAX: z.coerce.number().default(10),
 
@@ -31,14 +31,13 @@ const envSchema = z.object({
   JWT_REFRESH_SECRET: z.string().default('peoplepay360-refresh-secret-change-in-prod'),
   JWT_REFRESH_EXPIRY: z.string().default('7d'),
 
-  // Email (Nodemailer)
   SMTP_HOST: z.string().default('smtp.ethereal.email'),
   SMTP_PORT: z.coerce.number().default(587),
   SMTP_USER: z.string().optional(),
   SMTP_PASSWORD: z.string().optional(),
   SMTP_FROM: z.string().default('payroll@peoplepay360.com'),
 
-  // Rate Limiting
+
   RATE_LIMIT_WINDOW_MS: z.coerce.number().default(15 * 60 * 1000), // 15 min
   RATE_LIMIT_MAX: z.coerce.number().default(100),
 

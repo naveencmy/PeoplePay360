@@ -11,12 +11,27 @@ import {
   Filter, Layers, ShieldCheck, AlertCircle, Sparkles 
 } from 'lucide-react';
 
+import useAuthStore from '@/store/authStore';
+
 export default function TimeOffPage({ initialTab = 'requests' }) {
+  const { user, hasRole } = useAuthStore();
+  const role = (user?.role || 'EMPLOYEE').toUpperCase();
+  const isEmployee = role === 'EMPLOYEE';
+  const isManager = role === 'MANAGER';
+  const isAdminOrHR = role === 'ADMIN' || role === 'HR';
+  const isAuditor = role === 'AUDITOR';
+
+  const availableTabs = [
+    { id: 'Requests', label: isEmployee ? 'My Leave Requests' : 'Leave Requests', icon: CalendarDays },
+    ...((!isEmployee) ? [{ id: 'Allocations', label: 'Leave Balances', icon: Layers }] : []),
+    ...(isAdminOrHR || isAuditor ? [{ id: 'Types', label: 'Leave Policies', icon: ShieldCheck }] : []),
+  ];
+
   const normalizeTab = (t) => {
     if (!t) return 'Requests';
     const lower = t.toLowerCase();
-    if (lower === 'allocations') return 'Allocations';
-    if (lower === 'types') return 'Types';
+    if (lower === 'allocations' && !isEmployee) return 'Allocations';
+    if (lower === 'types' && (isAdminOrHR || isAuditor)) return 'Types';
     return 'Requests';
   };
 
@@ -31,44 +46,42 @@ export default function TimeOffPage({ initialTab = 'requests' }) {
   return (
     <div className="space-y-6 pb-12 animate-fade-in">
       <PageHeader 
-        title="Time Off & Leaves" 
-        subtitle="Manage employee leave requests, annual quota allocations, and statutory paid leave policies" 
+        title={isEmployee ? "My Leaves & Time Off" : "Time Off & Leaves"} 
+        subtitle={isEmployee ? "Apply for leave, track request statuses, and review your annual allowances" : "Manage employee leave requests, annual quota allocations, and statutory paid leave policies"} 
         breadcrumbs={[
-          { label: 'Time Off', to: '/time-off' },
+          { label: isEmployee ? 'My Space' : 'Time Off', to: isEmployee ? '/my-space' : '/time-off' },
           { label: activeTab }
         ]}
       />
 
-      {/* Tab Navigation Pill Bar */}
-      <div className="flex items-center gap-1 bg-surface-2 p-1.5 rounded-xl border border-border-subtle w-fit">
-        {[
-          { id: 'Requests', label: 'Leave Requests', icon: CalendarDays },
-          { id: 'Allocations', label: 'Leave Balances', icon: Layers },
-          { id: 'Types', label: 'Leave Policies', icon: ShieldCheck },
-        ].map((tab) => {
-          const Icon = tab.icon;
-          const isActive = activeTab === tab.id;
-          return (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-all ${
-                isActive
-                  ? 'bg-surface-1 text-accent-blue shadow-sm border border-border-subtle/50'
-                  : 'text-text-muted hover:text-text-main hover:bg-surface-3/50'
-              }`}
-            >
-              <Icon className="w-3.5 h-3.5" />
-              <span>{tab.label}</span>
-            </button>
-          );
-        })}
-      </div>
+      {/* Tab Navigation Pill Bar - Filtered strictly by role */}
+      {availableTabs.length > 1 && (
+        <div className="flex items-center gap-1.5 bg-surface-2 dark:bg-[#131A29] p-1.5 rounded-2xl border border-slate-300 dark:border-slate-700/80 shadow-md w-fit">
+          {availableTabs.map((tab) => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all duration-150 ${
+                  isActive
+                    ? 'bg-accent-blue text-white shadow-md shadow-accent-blue/25 font-bold'
+                    : 'text-text-secondary dark:text-slate-300 hover:text-text-main hover:bg-surface-3/80 dark:hover:bg-surface-3'
+                }`}
+              >
+                <Icon className={`w-4 h-4 ${isActive ? 'text-white' : 'text-slate-400 dark:text-slate-400'}`} />
+                <span>{tab.label}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       <div className="mt-4">
         {activeTab === 'Requests' && <RequestsTab />}
-        {activeTab === 'Allocations' && <AllocationsTab />}
-        {activeTab === 'Types' && <TypesTab />}
+        {activeTab === 'Allocations' && !isEmployee && <AllocationsTab />}
+        {activeTab === 'Types' && (isAdminOrHR || isAuditor) && <TypesTab />}
       </div>
     </div>
   );
@@ -283,7 +296,7 @@ function AllocationsTab() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border-subtle">
-                {allocations.map((alloc) => {
+                {allocations.map((alloc, idx) => {
                   const allocated = Number(alloc.allocated) || 1;
                   const taken = Number(alloc.taken) || 0;
                   const remaining = Math.max(0, allocated - taken);
@@ -292,7 +305,7 @@ function AllocationsTab() {
                   
                   return (
                     <tr 
-                      key={alloc.id} 
+                      key={alloc.id ? `${alloc.id}-${idx}` : `alloc-${idx}`} 
                       onClick={() => setSelectedAllocation(alloc)} 
                       className="hover:bg-surface-3/50 transition-colors cursor-pointer group"
                     >
@@ -346,6 +359,8 @@ function TypesTab() {
   const { data: types = [], isLoading } = useTimeOffTypes();
   const [selectedType, setSelectedType] = useState(null);
   const [isNewModalOpen, setIsNewModalOpen] = useState(false);
+  const { hasRole } = useAuthStore();
+  const canManageTypes = hasRole('ADMIN', 'HR');
 
   return (
     <div className="space-y-6">
@@ -354,15 +369,17 @@ function TypesTab() {
           <h3 className="text-xs font-semibold uppercase tracking-wider text-text-muted">Corporate Policies</h3>
           <p className="text-xs text-text-secondary">Define accrual rules and payroll deduction linkages</p>
         </div>
-        <Button 
-          variant="primary" 
-          size="sm"
-          onClick={() => setIsNewModalOpen(true)}
-          className="gap-1.5 shadow-sm"
-        >
-          <Plus size={16} />
-          <span>New Leave Policy</span>
-        </Button>
+        {canManageTypes && (
+          <Button 
+            variant="primary" 
+            size="sm"
+            onClick={() => setIsNewModalOpen(true)}
+            className="gap-1.5 shadow-sm"
+          >
+            <Plus size={16} />
+            <span>New Leave Policy</span>
+          </Button>
+        )}
       </div>
 
       <div className="bg-surface-2 border border-border-subtle rounded-xl overflow-hidden shadow-card">
@@ -376,8 +393,8 @@ function TypesTab() {
             icon={ShieldCheck}
             title="No leave policies"
             description="Create leave policies to govern employee time off requests."
-            actionLabel="Create Policy"
-            onAction={() => setIsNewModalOpen(true)}
+            actionLabel={canManageTypes ? "Create Policy" : undefined}
+            onAction={canManageTypes ? () => setIsNewModalOpen(true) : undefined}
           />
         ) : (
           <div className="overflow-x-auto">
@@ -389,15 +406,15 @@ function TypesTab() {
                   <th className="py-3 px-4">Allocation Required</th>
                   <th className="py-3 px-4">Approval Required</th>
                   <th className="py-3 px-4">Payroll Deduction Impact</th>
-                  <th className="py-3 px-4 text-right">Configure</th>
+                  {canManageTypes && <th className="py-3 px-4 text-right">Configure</th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-border-subtle">
                 {types.map((type) => (
                   <tr 
                     key={type.id} 
-                    onClick={() => setSelectedType(type)} 
-                    className="hover:bg-surface-3/50 transition-colors cursor-pointer group"
+                    onClick={canManageTypes ? () => setSelectedType(type) : undefined} 
+                    className={`hover:bg-surface-3/50 transition-colors ${canManageTypes ? 'cursor-pointer group' : ''}`}
                   >
                     <td className="py-3.5 px-4 font-semibold text-text-main group-hover:text-accent-blue transition-colors">
                       {type.name}
@@ -418,11 +435,13 @@ function TypesTab() {
                         {type.payrollIntegration ? 'Integrated (LOP Rules)' : 'Non-Deductive'}
                       </span>
                     </td>
-                    <td className="py-3.5 px-4 text-right">
-                      <button className="text-xs text-accent-blue font-medium hover:underline">
-                        Edit
-                      </button>
-                    </td>
+                    {canManageTypes && (
+                      <td className="py-3.5 px-4 text-right">
+                        <button className="text-xs text-accent-blue font-medium hover:underline">
+                          Edit
+                        </button>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>
@@ -431,7 +450,7 @@ function TypesTab() {
         )}
       </div>
 
-      {(isNewModalOpen || selectedType) && (
+      {canManageTypes && (isNewModalOpen || selectedType) && (
         <TimeOffTypeFormModal type={selectedType} onClose={() => { setIsNewModalOpen(false); setSelectedType(null); }} />
       )}
     </div>

@@ -43,7 +43,7 @@ class EmployeeRepository extends BaseRepository {
     let sql = "SELECT * FROM employees WHERE status = 'ACTIVE' AND deleted_at IS NULL";
     const params = [];
 
-    if (department) {
+    if (department && !department.toLowerCase().includes('all')) {
       sql += ' AND department = $1';
       params.push(department);
     }

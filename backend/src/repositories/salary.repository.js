@@ -46,7 +46,7 @@ class SalaryRuleRepository extends BaseRepository {
     super('salary_rules', [
       'structure_id', 'name', 'code', 'category', 'sequence',
       'computation_type', 'computation_basis', 'amount', 'formula',
-      'condition', 'active', 'appears_on_payslip', 'note',
+      'condition', 'active',
     ]);
   }
 

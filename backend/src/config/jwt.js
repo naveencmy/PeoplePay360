@@ -70,7 +70,7 @@ function generateTokenPair(user) {
   const accessToken = generateAccessToken({
     userId: user.id,
     email: user.email,
-    role: user.role,
+    role: (user.role || 'EMPLOYEE').toUpperCase(),
     employeeId: user.employee_id || null,
   });
   const refreshToken = generateRefreshToken({

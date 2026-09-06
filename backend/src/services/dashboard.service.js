@@ -146,6 +146,192 @@ async function getMonthlyTrend(months = 12) {
 }
 
 /**
+ * Get 7-day attendance trend
+ */
+async function getAttendanceTrend() {
+  const cacheKey = `${CACHE_PREFIX}:attendance_trend`;
+  const cached = await getCache(cacheKey);
+  if (cached) return cached;
+
+  try {
+    const result = await attendanceRepo.raw(`
+      WITH days AS (
+        SELECT generate_series(CURRENT_DATE - INTERVAL '6 days', CURRENT_DATE, '1 day'::interval)::date AS day
+      ),
+      emp_count AS (
+        SELECT COUNT(*) AS total FROM employees WHERE status = 'ACTIVE' AND deleted_at IS NULL
+      )
+      SELECT 
+        TO_CHAR(d.day, 'Dy') AS day,
+        d.day AS date,
+        COUNT(a.id) FILTER (WHERE a.status = 'PRESENT' OR a.check_in IS NOT NULL) AS present_count,
+        COUNT(a.id) FILTER (WHERE a.status = 'LATE') AS late_count,
+        COALESCE((SELECT total FROM emp_count), 0) AS total_employees
+      FROM days d
+      LEFT JOIN attendance a ON a.date = d.day AND a.deleted_at IS NULL
+      GROUP BY d.day
+      ORDER BY d.day ASC
+    `);
+
+    const data = result.rows.map((r) => {
+      const total = parseInt(r.total_employees, 10) || 1;
+      const present = parseInt(r.present_count, 10) || 0;
+      const late = parseInt(r.late_count, 10) || 0;
+      const attendancePct = Math.min(100, Math.round((present / total) * 100));
+      const latePct = Math.min(100, Math.round((late / total) * 100));
+
+      return {
+        day: r.day,
+        attendance: attendancePct,
+        late: latePct,
+      };
+    });
+
+    await setCache(cacheKey, data, CACHE_TTL);
+    return data;
+  } catch (error) {
+    console.error('Failed to query attendance trend:', error);
+    return [];
+  }
+}
+
+/**
+ * Get time-off summary breakdown
+ */
+async function getTimeOffSummary() {
+  const cacheKey = `${CACHE_PREFIX}:timeoff_summary`;
+  const cached = await getCache(cacheKey);
+  if (cached) return cached;
+
+  try {
+    const [statsRes, empCountRes] = await Promise.all([
+      timeoffRepo.raw(`
+        SELECT 
+          leave_type,
+          COUNT(*) FILTER (WHERE status = 'APPROVED') AS approved_count,
+          COALESCE(SUM(duration) FILTER (WHERE status = 'APPROVED'), 0) AS approved_days,
+          COUNT(*) FILTER (WHERE status = 'PENDING') AS pending_count,
+          COALESCE(SUM(duration) FILTER (WHERE status = 'PENDING'), 0) AS pending_days
+        FROM timeoff_requests
+        WHERE deleted_at IS NULL
+        GROUP BY leave_type
+      `),
+      employeeRepo.raw(`SELECT COUNT(*) as count FROM employees WHERE status = 'ACTIVE' AND deleted_at IS NULL`),
+    ]);
+
+    const activeEmpCount = parseInt(empCountRes.rows[0]?.count, 10) || 0;
+    const standardTypes = [
+      { key: 'PAID_LEAVE', name: 'Paid Leave', quota: 15 },
+      { key: 'SICK_LEAVE', name: 'Sick Leave', quota: 10 },
+      { key: 'CASUAL_LEAVE', name: 'Casual Leave', quota: 10 },
+    ];
+
+    const statsMap = {};
+    for (const row of statsRes.rows) {
+      const normalizedKey = (row.leave_type || '').toUpperCase();
+      statsMap[normalizedKey] = {
+        approved: parseFloat(row.approved_days) || 0,
+        pending: parseInt(row.pending_count, 10) || 0,
+      };
+      if (normalizedKey === 'CASUAL') {
+        statsMap['CASUAL_LEAVE'] = {
+          approved: (statsMap['CASUAL_LEAVE']?.approved || 0) + (parseFloat(row.approved_days) || 0),
+          pending: (statsMap['CASUAL_LEAVE']?.pending || 0) + (parseInt(row.pending_count, 10) || 0),
+        };
+      }
+    }
+
+    let totalApproved = 0;
+    let totalPending = 0;
+    let totalBalance = 0;
+
+    const breakdown = standardTypes.map((t) => {
+      const approved = statsMap[t.key]?.approved || 0;
+      const pending = statsMap[t.key]?.pending || 0;
+      const balance = Math.max(0, activeEmpCount * t.quota - approved);
+
+      totalApproved += approved;
+      totalPending += pending;
+      totalBalance += balance;
+
+      return {
+        type: t.name,
+        approved: Math.round(approved),
+        pending,
+        balance,
+      };
+    });
+
+    const result = {
+      summary: {
+        approved: Math.round(totalApproved),
+        pending: totalPending,
+        available: `${totalBalance}d`,
+      },
+      breakdown,
+    };
+
+    await setCache(cacheKey, result, CACHE_TTL);
+    return result;
+  } catch (error) {
+    console.error('Failed to query timeoff summary:', error);
+    return {
+      summary: { approved: 0, pending: 0, available: '0d' },
+      breakdown: [],
+    };
+  }
+}
+
+/**
+ * Get real-time payroll status counts
+ */
+async function getPayrollStatusCounts() {
+  const cacheKey = `${CACHE_PREFIX}:status_counts`;
+  const cached = await getCache(cacheKey);
+  if (cached) return cached;
+
+  try {
+    const [payrunCounts, payslipCounts, warningCounts] = await Promise.all([
+      payslipRepo.raw(`
+        SELECT state, COUNT(*) as count 
+        FROM payruns 
+        WHERE deleted_at IS NULL 
+        GROUP BY state
+      `),
+      payslipRepo.raw(`
+        SELECT status, COUNT(*) as count 
+        FROM payslips 
+        WHERE deleted_at IS NULL 
+        GROUP BY status
+      `),
+      attendanceRepo.raw(`
+        SELECT COUNT(*) as count 
+        FROM attendance 
+        WHERE check_out IS NULL AND date < CURRENT_DATE AND deleted_at IS NULL
+      `),
+    ]);
+
+    const pMap = {};
+    for (const r of payrunCounts.rows) pMap[r.state] = parseInt(r.count, 10);
+    const sMap = {};
+    for (const r of payslipCounts.rows) sMap[r.status] = parseInt(r.count, 10);
+
+    const result = {
+      paid: sMap['PAID'] || pMap['PAID'] || 0,
+      computed: sMap['COMPUTED'] || pMap['COMPUTED'] || 0,
+      draft: pMap['DRAFT'] || 0,
+      warnings: parseInt(warningCounts.rows[0]?.count, 10) || 0,
+    };
+
+    await setCache(cacheKey, result, CACHE_TTL);
+    return result;
+  } catch (error) {
+    console.error('Failed to query payroll status counts:', error);
+    return { paid: 0, computed: 0, draft: 0, warnings: 0 };
+  }
+}
+
+/**
  * Force refresh all dashboard caches
  */
 async function refreshDashboardCache() {
@@ -158,5 +344,8 @@ module.exports = {
   getAttendanceHealth,
   getSalaryByDepartment,
   getMonthlyTrend,
+  getAttendanceTrend,
+  getTimeOffSummary,
+  getPayrollStatusCounts,
   refreshDashboardCache,
 };

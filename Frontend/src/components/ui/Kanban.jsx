@@ -2,16 +2,21 @@ import React, { useState } from 'react';
 
 const Kanban = ({ columns = [], renderCard, onCardMove }) => {
   const [draggedCard, setDraggedCard] = useState(null);
+  const [dragOverCol, setDragOverCol] = useState(null);
 
   const handleDragStart = (e, card, sourceColId) => {
     setDraggedCard({ card, sourceColId });
     e.dataTransfer.effectAllowed = 'move';
-    // Transparent drag image hack for better UX if needed
   };
 
-  const handleDragOver = (e) => {
+  const handleDragOver = (e, colId) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
+    setDragOverCol(colId);
+  };
+
+  const handleDragLeave = () => {
+    setDragOverCol(null);
   };
 
   const handleDrop = (e, targetColId) => {
@@ -20,25 +25,31 @@ const Kanban = ({ columns = [], renderCard, onCardMove }) => {
       onCardMove(draggedCard.card, draggedCard.sourceColId, targetColId);
     }
     setDraggedCard(null);
+    setDragOverCol(null);
   };
 
   return (
-    <div className="flex w-full h-full overflow-x-auto pb-4 gap-6 items-start">
+    <div className="flex w-full h-full overflow-x-auto pb-4 gap-5 items-start">
       {columns.map(col => (
         <div 
           key={col.id} 
-          className="flex-shrink-0 w-80 flex flex-col bg-[#0B0D10] rounded-lg border border-[rgba(255,255,255,0.08)] max-h-full"
-          onDragOver={handleDragOver}
+          className={`flex-shrink-0 w-80 flex flex-col bg-surface-1 rounded-2xl border transition-all duration-200 max-h-full ${
+            dragOverCol === col.id 
+              ? 'border-accent-blue/40 shadow-[0_0_20px_rgba(79,124,255,0.1)]' 
+              : 'border-border-subtle'
+          }`}
+          onDragOver={(e) => handleDragOver(e, col.id)}
+          onDragLeave={handleDragLeave}
           onDrop={(e) => handleDrop(e, col.id)}
         >
-          <div className="p-3 border-b border-[rgba(255,255,255,0.08)] flex items-center justify-between bg-[#161B22] rounded-t-lg">
-            <div className="flex items-center gap-2">
+          <div className="p-3.5 border-b border-border-subtle flex items-center justify-between bg-surface-2/60 backdrop-blur-sm rounded-t-2xl">
+            <div className="flex items-center gap-2.5">
               {col.color && (
-                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: col.color }}></div>
+                <div className="w-2.5 h-2.5 rounded-full ring-2 ring-offset-1 ring-offset-surface-1" style={{ backgroundColor: col.color, boxShadow: `0 0 8px ${col.color}40` }}></div>
               )}
-              <h3 className="font-semibold text-gray-200">{col.label}</h3>
+              <h3 className="font-semibold text-text-main text-sm">{col.label}</h3>
             </div>
-            <span className="bg-gray-800 text-gray-300 text-xs py-1 px-2 rounded-full font-medium">
+            <span className="bg-surface-3 text-text-secondary text-xs py-0.5 px-2 rounded-full font-medium border border-border-subtle">
               {col.cards?.length || 0}
             </span>
           </div>
@@ -49,7 +60,7 @@ const Kanban = ({ columns = [], renderCard, onCardMove }) => {
                 key={card.id}
                 draggable
                 onDragStart={(e) => handleDragStart(e, card, col.id)}
-                className="cursor-grab active:cursor-grabbing hover:-translate-y-1 transition-transform"
+                className="cursor-grab active:cursor-grabbing hover:-translate-y-0.5 transition-all duration-200"
               >
                 {renderCard(card)}
               </div>

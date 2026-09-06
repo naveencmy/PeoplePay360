@@ -29,7 +29,7 @@ export const useCreateContract = () => {
 export const useUpdateContract = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, data }) => api.updateContract(id, data),
+    mutationFn: ({ id, data, ...rest }) => api.updateContract(id, data || rest),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['contracts'] });
       queryClient.invalidateQueries({ queryKey: ['contract', variables.id] });

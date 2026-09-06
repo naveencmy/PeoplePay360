@@ -17,9 +17,14 @@ import { Card } from '@/components/ui/Card';
 import EmptyState from '@/components/ui/EmptyState';
 import EmployeeKanban from '@/components/employee/EmployeeKanban';
 import CreateEmployeeModal from '@/components/employee/CreateEmployeeModal';
+import useAuthStore from '@/store/authStore';
 
 export default function EmployeesPage() {
   const navigate = useNavigate();
+  const user = useAuthStore(s => s.user);
+  const role = (user?.role || '').toUpperCase();
+  const canManage = role === 'ADMIN' || role === 'HR';
+
   const [view, setView] = useState('list'); // 'list' | 'kanban'
   const [search, setSearch] = useState('');
   const [department, setDepartment] = useState('');
@@ -31,7 +36,7 @@ export default function EmployeesPage() {
   const deleteEmployee = useDeleteEmployee();
 
   const handleDelete = async () => {
-    if (employeeToDelete) {
+    if (employeeToDelete && canManage) {
       await deleteEmployee.mutateAsync(employeeToDelete);
       setEmployeeToDelete(null);
     }
@@ -126,15 +131,17 @@ export default function EmployeesPage() {
           >
             <Edit2 size={14} />
           </Button>
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            className="h-8 w-8 p-0 text-text-muted hover:text-accent-rose" 
-            onClick={() => setEmployeeToDelete(row.id)}
-            title="Delete Record"
-          >
-            <Trash2 size={14} />
-          </Button>
+          {canManage && (
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="h-8 w-8 p-0 text-text-muted hover:text-accent-rose" 
+              onClick={() => setEmployeeToDelete(row.id)}
+              title="Delete Record"
+            >
+              <Trash2 size={14} />
+            </Button>
+          )}
         </div>
       ),
     },
@@ -156,15 +163,17 @@ export default function EmployeesPage() {
           { label: 'All Personnel' }
         ]}
         actions={
-          <Button 
-            onClick={() => setIsCreateModalOpen(true)} 
-            variant="primary" 
-            size="sm"
-            className="gap-2 shadow-sm"
-          >
-            <Plus size={16} />
-            <span>New Employee</span>
-          </Button>
+          canManage && (
+            <Button 
+              onClick={() => setIsCreateModalOpen(true)} 
+              variant="primary" 
+              size="sm"
+              className="gap-2 shadow-sm"
+            >
+              <Plus size={16} />
+              <span>New Employee</span>
+            </Button>
+          )
         }
       />
 
@@ -289,13 +298,13 @@ export default function EmployeesPage() {
             icon={Users}
             title="No employees found"
             description={search ? `No personnel match "${search}". Try adjusting your filters.` : "No employees in this department yet."}
-            actionLabel={search ? "Clear Filters" : "Add Employee"}
+            actionLabel={search ? "Clear Filters" : (canManage ? "Add Employee" : undefined)}
             onAction={() => {
               if (search) {
                 setSearch('');
                 setDepartment('');
                 setStatusFilter('');
-              } else {
+              } else if (canManage) {
                 setIsCreateModalOpen(true);
               }
             }}

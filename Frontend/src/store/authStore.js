@@ -1,52 +1,12 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
-const PERMISSIONS = {
-  employee: {
-    employees: 'read_own',
-    contracts: 'read_own',
-    attendance: 'read_write_own',
-    timeoff: 'read_write_own',
-    payruns: 'none',
-    payslips: 'read_own',
-    users: 'none'
-  },
-  hr_manager: {
-    employees: 'crud',
-    contracts: 'crud',
-    attendance: 'crud',
-    timeoff: 'crud',
-    payruns: 'none',
-    payslips: 'none',
-    users: 'none'
-  },
-  hr_payroll_user: {
-    employees: 'crud',
-    contracts: 'crud',
-    attendance: 'crud',
-    timeoff: 'crud',
-    payruns: 'read',
-    payslips: 'read',
-    users: 'none'
-  },
-  hr_payroll_manager: {
-    employees: 'crud',
-    contracts: 'crud',
-    attendance: 'crud',
-    timeoff: 'crud',
-    payruns: 'crud',
-    payslips: 'crud',
-    users: 'none'
-  },
-  admin: {
-    employees: 'crud',
-    contracts: 'crud',
-    attendance: 'crud',
-    timeoff: 'crud',
-    payruns: 'crud',
-    payslips: 'crud',
-    users: 'crud'
-  }
+export const ROLES = {
+  ADMIN: 'ADMIN',
+  HR: 'HR',
+  MANAGER: 'MANAGER',
+  AUDITOR: 'AUDITOR',
+  EMPLOYEE: 'EMPLOYEE',
 };
 
 export const useAuthStore = create(
@@ -59,49 +19,34 @@ export const useAuthStore = create(
       login: async (credentials) => {
         if (!credentials) return false;
         
-        // If passed structured user object (e.g. from LoginPage)
-        if (credentials.role) {
-          if (credentials.token) {
-            localStorage.setItem('token', credentials.token);
-          }
-          set({
-            user: {
-              id: credentials.id || 'USR-001',
-              username: credentials.email || credentials.username || 'user',
-              name: credentials.name || (credentials.email ? credentials.email.split('@')[0] : 'User'),
-              role: credentials.role,
-              employeeId: credentials.employeeId || credentials.employee_id || null,
-              email: credentials.email || ''
-            },
-            token: credentials.token,
-            isAuthenticated: true
-          });
-          return true;
-        }
-
-        const username = credentials.username || credentials.email || '';
-        let role = 'employee';
-        if (username.includes('admin')) role = 'admin';
-        else if (username.includes('hrmanager') || username.includes('hr_manager')) role = 'hr_manager';
-        else if (username.includes('payrolluser') || username.includes('payroll_user')) role = 'hr_payroll_user';
-        else if (username.includes('payroll')) role = 'hr_payroll_manager';
+        let role = (credentials.role || 'EMPLOYEE').toUpperCase();
+        if (role === 'SUPER_ADMIN') role = 'ADMIN';
+        if (role === 'HR_ADMIN') role = 'HR';
+        if (role === 'PAYROLL_OFFICER' || role === 'HR_PAYROLL_MANAGER') role = 'HR_PAYROLL_MANAGER';
+        if (role === 'HR_PAYROLL_USER') role = 'HR_PAYROLL_USER';
+        if (role === 'HR_MANAGER') role = 'HR_MANAGER';
 
         if (credentials.token) {
           localStorage.setItem('token', credentials.token);
         }
 
-        set({
-          user: { 
-            id: credentials.id || 'USR-001', 
-            username, 
-            name: username.split('@')[0] || 'User', 
-            role, 
-            employeeId: credentials.employeeId || credentials.employee_id || null,
-            email: username.includes('@') ? username : `${username}@company.com`
-          },
+        const username = credentials.email || credentials.username || '';
+        const userObj = {
+          id: credentials.id || 'USR-001',
+          username,
+          name: credentials.name || (username ? username.split('@')[0] : 'User'),
+          role,
+          employeeId: credentials.employeeId || credentials.employee_id || null,
+          email: credentials.email || (username.includes('@') ? username : `${username}@company.com`),
           token: credentials.token,
-          isAuthenticated: true
+        };
+
+        set({
+          user: userObj,
+          token: credentials.token,
+          isAuthenticated: true,
         });
+
         return true;
       },
       
@@ -110,19 +55,22 @@ export const useAuthStore = create(
         set({ user: null, token: null, isAuthenticated: false });
       },
       
-      hasPermission: (action, resource) => {
+      hasRole: (...allowedRoles) => {
         const { user } = get();
         if (!user) return false;
-        const rolePerms = PERMISSIONS[user.role] || PERMISSIONS['employee'];
-        const resourcePerms = rolePerms[resource] || 'none';
-        
-        if (resourcePerms === 'crud') return true;
-        if (resourcePerms === 'none') return false;
-        
-        if (action === 'read' && (resourcePerms.includes('read'))) return true;
-        if (action === 'write' && (resourcePerms.includes('write'))) return true;
-        
-        return false;
+        const currentRole = (user.role || '').toUpperCase();
+        if (currentRole === 'ADMIN') return true;
+
+        const effective = [currentRole];
+        if (currentRole === 'HR_PAYROLL_MANAGER') {
+          effective.push('HR', 'PAYROLL_MANAGER', 'HR_PAYROLL_USER', 'HR_MANAGER', 'PAYROLL');
+        } else if (currentRole === 'HR_PAYROLL_USER') {
+          effective.push('HR', 'PAYROLL_USER', 'HR_MANAGER', 'PAYROLL');
+        } else if (currentRole === 'HR_MANAGER' || currentRole === 'HR') {
+          effective.push('HR_MANAGER', 'HR');
+        }
+
+        return allowedRoles.some(r => effective.includes(r.toUpperCase()));
       }
     }),
     {

@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { 
-  BrainCircuit, AlertTriangle, ShieldCheck, Sparkles, CheckCircle, 
-  ArrowRight, Filter, Info, Eye, Clock, User, FileText, ChevronRight, RefreshCw
+  BrainCircuit, AlertTriangle, ShieldCheck, Search, Info, CheckCircle, 
+  ArrowRight, Filter, Eye, Clock, User, FileText, ChevronRight, RefreshCw
 } from 'lucide-react';
 import PageHeader from '@/components/layout/PageHeader';
 import Card from '@/components/ui/Card';
@@ -14,6 +14,7 @@ import { useContracts } from '@/hooks/useContracts';
 import { usePayruns } from '@/hooks/usePayrun';
 import { useSalaryStructures } from '@/hooks/useSalary';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import toast from 'react-hot-toast';
 import * as api from '@/api/realApi';
 
 export default function PayrollIntelligencePage() {
@@ -53,13 +54,14 @@ export default function PayrollIntelligencePage() {
     // Audit 1: Expiring contracts
     if (Array.isArray(expiringContracts)) {
       expiringContracts.forEach((c, idx) => {
+        const seq = String(idx + 1).padStart(3, '0');
         items.push({
-          id: `INT-CON-${c.id?.slice(0, 6) || idx}`,
+          id: `INT-CON-${seq}`,
           severity: 'HIGH',
           type: 'Contracts',
           title: `Contract Expiring Soon: ${c.name || 'Employment Contract'}`,
           employeeName: `${c.first_name || ''} ${c.last_name || ''}`.trim() || c.employeeName || 'Active Employee',
-          employeeId: c.employee_code || c.employee_id || 'EMP-LIVE',
+          employeeCode: c.employee_code || c.employee_id || '',
           department: c.department || 'Operations',
           previousPay: parseFloat(c.wage) || 0,
           currentPay: parseFloat(c.wage) || 0,
@@ -78,16 +80,20 @@ export default function PayrollIntelligencePage() {
 
     // Audit 2: Employee statutory profile compliance
     if (Array.isArray(employees)) {
+      let panIdx = 0;
+      let bnkIdx = 0;
       employees.forEach((emp) => {
         // Missing PAN Number
         if (!emp.pan_number || emp.pan_number === 'PENDING') {
+          panIdx++;
+          const seq = String(panIdx).padStart(3, '0');
           items.push({
-            id: `INT-PAN-${emp.id?.slice(0, 6)}`,
+            id: `INT-PAN-${seq}`,
             severity: 'MEDIUM',
             type: 'Compliance',
             title: `Missing PAN Number for Statutory Tax Filing`,
             employeeName: emp.name,
-            employeeId: emp.employee_code || emp.id?.slice(0, 8),
+            employeeCode: emp.employee_code || '',
             department: emp.department || 'Operations',
             previousPay: 0,
             currentPay: 0,
@@ -97,7 +103,7 @@ export default function PayrollIntelligencePage() {
               'Employee master profile created without permanent account number (PAN)',
               'Statutory Form 16 and TDS filing requires valid 10-character PAN'
             ],
-            evidence: `Employee master record ${emp.employee_code} has empty pan_number column in PostgreSQL database.`,
+            evidence: `Employee master record ${emp.employee_code || emp.name} has empty pan_number column in PostgreSQL database.`,
             recommendation: 'Collect official PAN card copy from employee and update profile for tax deduction compliance.',
             status: 'Pending Review'
           });
@@ -105,13 +111,15 @@ export default function PayrollIntelligencePage() {
 
         // Missing Bank Details
         if (!emp.bank_account_number || !emp.bank_ifsc) {
+          bnkIdx++;
+          const seq = String(bnkIdx).padStart(3, '0');
           items.push({
-            id: `INT-BNK-${emp.id?.slice(0, 6)}`,
+            id: `INT-BNK-${seq}`,
             severity: 'HIGH',
             type: 'Compliance',
             title: `Missing Banking Coordinates for Direct Salary Deposit`,
             employeeName: emp.name,
-            employeeId: emp.employee_code || emp.id?.slice(0, 8),
+            employeeCode: emp.employee_code || '',
             department: emp.department || 'Operations',
             previousPay: 0,
             currentPay: 0,
@@ -121,7 +129,7 @@ export default function PayrollIntelligencePage() {
               'Missing bank account number or IFSC code',
               'Automated NACH / NEFT batch export will fail for this beneficiary'
             ],
-            evidence: `Bank account or IFSC column is null for employee record in database.`,
+            evidence: `Bank account or IFSC column is empty for employee record in database.`,
             recommendation: 'Collect cancelled cheque or bank statement and record valid IFSC before executing payrun.',
             status: 'Critical Alert'
           });
@@ -131,14 +139,15 @@ export default function PayrollIntelligencePage() {
 
     // Audit 3: Attendance anomalies from database
     if (Array.isArray(attendanceAnomalies)) {
-      attendanceAnomalies.forEach((a) => {
+      attendanceAnomalies.forEach((a, idx) => {
+        const seq = String(idx + 1).padStart(3, '0');
         items.push({
-          id: `INT-ATT-${a.id?.slice(0, 6)}`,
+          id: `INT-ATT-${seq}`,
           severity: 'MEDIUM',
           type: 'Attendance',
           title: `High Unplanned Absence Ratio Detected (${a.attendance_pct}% attendance)`,
           employeeName: `${a.first_name || ''} ${a.last_name || ''}`.trim() || 'Employee',
-          employeeId: a.id?.slice(0, 8),
+          employeeCode: a.employee_code || '',
           department: a.department || 'General',
           previousPay: 0,
           currentPay: 0,
@@ -157,15 +166,16 @@ export default function PayrollIntelligencePage() {
 
     // Audit 4: Salary structure completeness check
     if (Array.isArray(structures)) {
-      structures.forEach((st) => {
+      structures.forEach((st, idx) => {
         if (!st.rulesCount && (!st.rules || st.rules.length === 0)) {
+          const seq = String(idx + 1).padStart(3, '0');
           items.push({
-            id: `INT-STR-${st.id?.slice(0, 6)}`,
+            id: `INT-STR-${seq}`,
             severity: 'HIGH',
             type: 'Compliance',
             title: `Unconfigured Salary Structure: ${st.name}`,
-            employeeName: 'Structure Policy',
-            employeeId: st.id?.slice(0, 8),
+            employeeName: st.name,
+            employeeCode: '',
             department: 'Compensation & Benefits',
             previousPay: 0,
             currentPay: 0,
@@ -175,7 +185,7 @@ export default function PayrollIntelligencePage() {
               'Salary structure has 0 active computation rules attached',
               'Assigned contracts cannot resolve gross/net salary formulas'
             ],
-            evidence: `Database table salary_rules has zero entries for structure_id [${st.id}].`,
+            evidence: `Database table salary_rules has zero entries for structure [${st.name}].`,
             recommendation: 'Configure Basic Pay, Allowance, and Deductions rules before assigning to employee contracts.',
             status: 'Critical Alert'
           });
@@ -185,15 +195,16 @@ export default function PayrollIntelligencePage() {
 
     // Audit 5: Payrun lifecycle checks
     if (Array.isArray(payruns)) {
-      payruns.forEach((p) => {
+      payruns.forEach((p, idx) => {
         if (p.state === 'DRAFT') {
+          const seq = String(idx + 1).padStart(3, '0');
           items.push({
-            id: `INT-PAY-${p.id?.slice(0, 6)}`,
+            id: `INT-PAY-${seq}`,
             severity: 'LOW',
             type: 'Variance',
             title: `Pending Draft Payrun Requires Computation: ${p.name}`,
-            employeeName: 'Payrun Cycle',
-            employeeId: p.id?.slice(0, 8),
+            employeeName: p.name,
+            employeeCode: '',
             department: p.department || 'All Departments',
             previousPay: 0,
             currentPay: 0,
@@ -217,6 +228,7 @@ export default function PayrollIntelligencePage() {
   const handleResolve = (id) => {
     setResolvedIds(prev => new Set([...prev, id]));
     setActiveItem(null);
+    toast.success('Investigation marked as resolved');
   };
 
   const handleRunScan = async () => {
@@ -260,14 +272,15 @@ export default function PayrollIntelligencePage() {
             <Button 
               variant="primary" 
               size="sm" 
-              icon={isScanning ? RefreshCw : Sparkles}
               disabled={isScanning}
               onClick={handleRunScan}
-              className="gap-2 shadow-sm"
+              className="inline-flex items-center gap-2 shadow-sm"
             >
-              <span className={isScanning ? 'animate-spin' : ''}>
-                {isScanning ? <RefreshCw className="w-4 h-4" /> : <Sparkles className="w-4 h-4" />}
-              </span>
+              {isScanning ? (
+                <RefreshCw className="w-4 h-4 animate-spin shrink-0" />
+              ) : (
+                <Search className="w-4 h-4 shrink-0 text-white" />
+              )}
               <span>{isScanning ? 'Scanning PostgreSQL...' : 'Run Intelligence Scan'}</span>
             </Button>
           </div>
@@ -297,7 +310,7 @@ export default function PayrollIntelligencePage() {
         <Card className="p-4 bg-surface-2 border-accent-blue/30">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold uppercase tracking-wider text-text-muted">Insights</span>
-            <Sparkles className="w-4 h-4 text-accent-blue" />
+            <Info className="w-4 h-4 text-accent-blue" />
           </div>
           <div className="text-3xl font-extrabold text-accent-blue mt-2 font-mono">{insightCount}</div>
           <p className="text-[11px] text-text-muted mt-1">Pipeline & lifecycle alerts</p>
@@ -394,7 +407,9 @@ export default function PayrollIntelligencePage() {
                     {item.title}
                   </h4>
                   <p className="text-xs text-text-muted mt-0.5">
-                    Target: <span className="font-semibold text-text-main">{item.employeeName}</span> ({item.employeeId}) · <span className="text-text-muted">{item.department}</span>
+                    Target: <span className="font-semibold text-text-main">{item.employeeName}</span>
+                    {item.employeeCode ? <span className="font-mono text-text-secondary"> ({item.employeeCode})</span> : null}
+                    {' · '}<span className="text-text-muted">{item.department}</span>
                   </p>
                 </div>
 
@@ -456,7 +471,9 @@ export default function PayrollIntelligencePage() {
             <div className="bg-surface-3 p-4 rounded-xl border border-border-medium space-y-2">
               <div className="font-bold text-base text-text-main">{activeItem.title}</div>
               <div className="text-text-muted text-xs">
-                Affecting <span className="font-semibold text-text-main">{activeItem.employeeName}</span> ({activeItem.employeeId}) in {activeItem.department}
+                Affecting <span className="font-semibold text-text-main">{activeItem.employeeName}</span>
+                {activeItem.employeeCode ? <span className="font-mono text-text-secondary"> ({activeItem.employeeCode})</span> : null}
+                {activeItem.department ? <span> in <span className="text-text-main font-medium">{activeItem.department}</span></span> : null}
               </div>
             </div>
 

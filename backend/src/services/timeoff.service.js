@@ -10,12 +10,18 @@ const { getCalendarDays } = require('../utils/date.utils');
 // Default annual leave entitlements
 const LEAVE_ENTITLEMENTS = {
   CASUAL: 12,
+  CASUAL_LEAVE: 12,
   SICK: 12,
+  SICK_LEAVE: 12,
   EARNED: 15,
+  EARNED_LEAVE: 15,
   MATERNITY: 182,
   PATERNITY: 15,
   UNPAID: 365,
+  UNPAID_LEAVE: 365,
   COMP_OFF: 0,
+  PAID_LEAVE: 24,
+  PAID: 24,
 };
 
 /**

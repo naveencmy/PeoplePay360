@@ -22,7 +22,12 @@ class PayrunRepository extends BaseRepository {
               COALESCE(SUM(ps.gross), 0) AS total_gross,
               COALESCE(SUM(ps.total_deductions), 0) AS total_deductions,
               COALESCE(SUM(ps.net), 0) AS total_net,
-              COALESCE(AVG(ps.net), 0) AS avg_net
+              COALESCE(AVG(ps.net), 0) AS avg_net,
+              (
+                SELECT COUNT(*) FROM employees e
+                WHERE e.status = 'ACTIVE' AND e.deleted_at IS NULL
+                AND (p.department IS NULL OR LOWER(p.department) LIKE '%all%' OR e.department = p.department)
+              ) AS eligible_count
        FROM payruns p
        LEFT JOIN payslips ps ON ps.payrun_id = p.id AND ps.deleted_at IS NULL
        WHERE p.id = $1 AND p.deleted_at IS NULL

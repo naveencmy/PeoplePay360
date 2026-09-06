@@ -61,3 +61,21 @@ export const useCreateTimeOffType = () => {
     },
   });
 };
+
+export const useUpdateTimeOffType = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...data }) => api.updateTimeOffType(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['timeOffTypes'] });
+    },
+  });
+};
+
+export const useTimeOffBalance = (employeeId) => {
+  return useQuery({
+    queryKey: ['timeOffBalance', employeeId],
+    queryFn: () => api.getTimeOffBalance(employeeId),
+    enabled: !!employeeId,
+  });
+};

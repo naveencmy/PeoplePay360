@@ -11,10 +11,16 @@ import {
   Users, CheckCircle2, Clock, AlertTriangle, Search, Filter, 
   Download, Edit2, Calendar, FileSpreadsheet 
 } from 'lucide-react';
+import useAuthStore from '@/store/authStore';
 
 export default function AttendancePage() {
+  const { user, hasRole } = useAuthStore();
+  const role = (user?.role || 'EMPLOYEE').toUpperCase();
+  const isEmployee = role === 'EMPLOYEE';
+  const canCorrect = hasRole('ADMIN', 'HR');
+
   const [searchParams] = useSearchParams();
-  const initialEmployeeId = searchParams.get('employee_id') || '';
+  const initialEmployeeId = searchParams.get('employee_id') || (isEmployee ? user?.employeeId : '') || '';
 
   const [filters, setFilters] = useState({
     employeeSearch: initialEmployeeId,
@@ -63,19 +69,61 @@ export default function AttendancePage() {
 
   const records = Array.isArray(attendanceData) ? attendanceData : (Array.isArray(attendanceData?.data) ? attendanceData.data : []);
 
+  const filteredRecords = React.useMemo(() => {
+    return records.filter(record => {
+      // Search filter
+      const search = (filters.employeeSearch || '').trim().toLowerCase();
+      if (search) {
+        const empName = (record.employeeName || `${record.first_name || ''} ${record.last_name || ''}`).toLowerCase();
+        const empCode = (record.employee_code || record.employeeCode || '').toLowerCase();
+        const dept = (record.department || '').toLowerCase();
+        const notes = (record.notes || '').toLowerCase();
+        const id = (record.employee_id || record.employeeId || '').toLowerCase();
+        const match = empName.includes(search) || empCode.includes(search) || dept.includes(search) || notes.includes(search) || id.includes(search);
+        if (!match) return false;
+      }
+
+      // Date range filters
+      if (filters.dateFrom) {
+        const recDate = record.date ? record.date.split('T')[0] : '';
+        if (recDate && recDate < filters.dateFrom) return false;
+      }
+
+      if (filters.dateTo) {
+        const recDate = record.date ? record.date.split('T')[0] : '';
+        if (recDate && recDate > filters.dateTo) return false;
+      }
+
+      // Status filter
+      if (filters.status && filters.status !== 'All') {
+        const recStatus = (record.status || '').toLowerCase();
+        const filterStatus = filters.status.toLowerCase();
+        if (filterStatus === 'missing checkout') {
+          if (!recStatus.includes('missing') && !(record.checkIn && !record.checkOut)) {
+            return false;
+          }
+        } else if (recStatus !== filterStatus) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+  }, [records, filters]);
+
   // Compute stats
-  const presentCount = records.filter(r => (r.status || '').toLowerCase() === 'present').length;
-  const lateCount = records.filter(r => (r.status || '').toLowerCase() === 'late').length;
-  const missingCount = records.filter(r => (r.status || '').toLowerCase().includes('missing')).length;
+  const presentCount = filteredRecords.filter(r => (r.status || '').toLowerCase() === 'present').length;
+  const lateCount = filteredRecords.filter(r => (r.status || '').toLowerCase() === 'late').length;
+  const missingCount = filteredRecords.filter(r => (r.status || '').toLowerCase().includes('missing') || (r.checkIn && !r.checkOut)).length;
 
   return (
     <div className="space-y-6 pb-12 animate-fade-in">
       <PageHeader 
-        title="Time & Attendance" 
-        subtitle="Live workforce attendance telemetry, shift compliance, and manual timecard reconciliation"
+        title={isEmployee ? "My Attendance Records" : "Time & Attendance"} 
+        subtitle={isEmployee ? "Live shift clocking, historical punch log, and biometric verification" : "Live workforce attendance telemetry, shift compliance, and manual timecard reconciliation"}
         breadcrumbs={[
-          { label: 'Attendance', to: '/attendance' },
-          { label: 'Timesheets' }
+          { label: isEmployee ? 'My Space' : 'Attendance', to: isEmployee ? '/my-space' : '/attendance' },
+          { label: isEmployee ? 'My Attendance' : 'Timesheets' }
         ]}
         actions={
           <div className="flex items-center gap-2">
@@ -85,7 +133,7 @@ export default function AttendancePage() {
               className="gap-1.5"
               onClick={() => {
                 const csvHeader = "data:text/csv;charset=utf-8,Employee,Date,CheckIn,CheckOut,WorkedHours,Status\n";
-                const csvRows = records.map(r => `"${r.employeeName}","${r.date}","${r.checkIn || ''}","${r.checkOut || ''}","${r.workedHours || 0}","${r.status || ''}"`).join("\n");
+                const csvRows = filteredRecords.map(r => `"${r.employeeName}","${r.date}","${r.checkIn || ''}","${r.checkOut || ''}","${r.workedHours || 0}","${r.status || ''}"`).join("\n");
                 const encodedUri = encodeURI(csvHeader + csvRows);
                 const link = document.createElement("a");
                 link.setAttribute("href", encodedUri);
@@ -110,7 +158,7 @@ export default function AttendancePage() {
           </div>
           <div>
             <div className="text-[11px] font-semibold uppercase tracking-wider text-text-muted">Logged Shifts</div>
-            <div className="text-xl font-bold font-mono text-text-main">{records.length}</div>
+            <div className="text-xl font-bold font-mono text-text-main">{filteredRecords.length}</div>
           </div>
         </Card>
 
@@ -162,26 +210,30 @@ export default function AttendancePage() {
             />
           </div>
 
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-text-muted">From:</span>
-            <Input 
-              type="date" 
-              name="dateFrom" 
-              value={filters.dateFrom} 
-              onChange={handleFilterChange} 
-              className="bg-surface-3 border-border-subtle text-xs h-9 w-36"
-            />
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs text-text-muted font-medium">From:</span>
+            <div className="w-38 sm:w-44">
+              <Input 
+                type="date" 
+                name="dateFrom" 
+                value={filters.dateFrom} 
+                onChange={handleFilterChange} 
+                inputClassName="h-9 text-xs bg-surface-3 border-border-subtle"
+              />
+            </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-text-muted">To:</span>
-            <Input 
-              type="date" 
-              name="dateTo" 
-              value={filters.dateTo} 
-              onChange={handleFilterChange} 
-              className="bg-surface-3 border-border-subtle text-xs h-9 w-36"
-            />
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs text-text-muted font-medium">To:</span>
+            <div className="w-38 sm:w-44">
+              <Input 
+                type="date" 
+                name="dateTo" 
+                value={filters.dateTo} 
+                onChange={handleFilterChange} 
+                inputClassName="h-9 text-xs bg-surface-3 border-border-subtle"
+              />
+            </div>
           </div>
 
           <Select 
@@ -209,7 +261,7 @@ export default function AttendancePage() {
           </div>
         ) : error ? (
           <div className="p-8 text-center text-accent-rose">Error loading attendance data.</div>
-        ) : !records?.length ? (
+        ) : !filteredRecords?.length ? (
           <EmptyState 
             icon={Calendar}
             title="No attendance records"
@@ -226,15 +278,15 @@ export default function AttendancePage() {
                   <th className="py-3 px-4">Check Out</th>
                   <th className="py-3 px-4 text-center">Worked Hours</th>
                   <th className="py-3 px-4">Status</th>
-                  <th className="py-3 px-4 text-right">Audit</th>
+                  {canCorrect && <th className="py-3 px-4 text-right">Audit</th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-border-subtle">
-                {records.map((record) => (
+                {filteredRecords.map((record) => (
                   <tr 
                     key={record.id} 
-                    onClick={() => setSelectedRecord(record)} 
-                    className="hover:bg-surface-3/50 transition-colors cursor-pointer group"
+                    onClick={canCorrect ? () => setSelectedRecord(record) : undefined} 
+                    className={`hover:bg-surface-3/50 transition-colors ${canCorrect ? 'cursor-pointer group' : ''}`}
                   >
                     <td className="py-3 px-4">
                       <div className="flex items-center gap-3">
@@ -268,20 +320,22 @@ export default function AttendancePage() {
                     <td className="py-3 px-4">
                       <StatusPill status={record.status || 'Present'} />
                     </td>
-                    <td className="py-3 px-4 text-right">
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        onClick={(e) => { 
-                          e.stopPropagation(); 
-                          setSelectedRecord(record); 
-                        }}
-                        className="h-7 px-2 text-xs text-text-muted hover:text-accent-blue gap-1"
-                      >
-                        <Edit2 size={12} />
-                        <span>Correct</span>
-                      </Button>
-                    </td>
+                    {canCorrect && (
+                      <td className="py-3 px-4 text-right">
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={(e) => { 
+                            e.stopPropagation(); 
+                            setSelectedRecord(record); 
+                          }}
+                          className="h-7 px-2 text-xs text-text-muted hover:text-accent-blue gap-1"
+                        >
+                          <Edit2 size={12} />
+                          <span>Correct</span>
+                        </Button>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>
@@ -290,7 +344,7 @@ export default function AttendancePage() {
         )}
       </div>
 
-      {selectedRecord && (
+      {canCorrect && selectedRecord && (
         <AttendanceDetailModal 
           record={selectedRecord} 
           onClose={() => setSelectedRecord(null)} 

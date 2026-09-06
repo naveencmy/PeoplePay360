@@ -39,7 +39,7 @@ class ContractRepository extends BaseRepository {
        WHERE employee_id = $1 
          AND state = 'ACTIVE' 
          AND date_start <= $2 
-         AND (date_end IS NULL OR date_end >= $1)
+         AND (date_end IS NULL OR date_end >= $3)
          AND deleted_at IS NULL
        ORDER BY date_start DESC 
        LIMIT 1`,

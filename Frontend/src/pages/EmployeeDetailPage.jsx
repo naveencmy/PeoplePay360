@@ -17,12 +17,21 @@ import AvatarBadge from '@/components/ui/AvatarBadge';
 import StatusPill from '@/components/ui/StatusPill';
 import toast from 'react-hot-toast';
 
+import useAuthStore from '@/store/authStore';
+
 export default function EmployeeDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [isEditing, setIsEditing] = useState(false);
   const [copied, setCopied] = useState(false);
   
+  const { user, hasRole } = useAuthStore();
+  const role = (user?.role || 'EMPLOYEE').toUpperCase();
+  const isEmployee = role === 'EMPLOYEE';
+  const canEdit = hasRole('ADMIN', 'HR');
+  const canViewContracts = hasRole('ADMIN', 'HR', 'AUDITOR');
+  const canViewAllocations = hasRole('ADMIN', 'HR', 'MANAGER');
+
   const { data: employee, isLoading, isError } = useEmployee(id);
   const updateEmployee = useUpdateEmployee();
   
@@ -44,6 +53,10 @@ export default function EmployeeDetailPage() {
   };
 
   const onSubmit = async (data) => {
+    if (!canEdit) {
+      toast.error('Unauthorized: You do not have permission to edit employee records.');
+      return;
+    }
     try {
       await updateEmployee.mutateAsync({ id, ...data });
       setIsEditing(false);
@@ -58,6 +71,24 @@ export default function EmployeeDetailPage() {
       <div className="p-12 text-center text-text-muted flex flex-col items-center gap-3">
         <div className="w-8 h-8 rounded-full border-2 border-accent-blue border-t-transparent animate-spin" />
         <span className="text-xs">Loading employee dossier...</span>
+      </div>
+    );
+  }
+
+  // IDOR Protection: Employee cannot view another employee's dossier
+  if (isEmployee && id !== user?.employeeId) {
+    return (
+      <div className="p-8 text-center text-accent-rose bg-surface-2 rounded-xl border border-accent-rose/20 m-6">
+        <div className="text-base font-bold mb-1">Access Forbidden (403)</div>
+        <div className="text-xs text-text-muted">You are only permitted to inspect your own authenticated employee record.</div>
+        <Button 
+          variant="outline" 
+          size="sm" 
+          onClick={() => navigate('/my-space')} 
+          className="mt-4"
+        >
+          Return to My Space
+        </Button>
       </div>
     );
   }
@@ -77,7 +108,7 @@ export default function EmployeeDetailPage() {
         title={employee.name} 
         subtitle={`${employee.jobPosition || 'Employee'} · ${employee.department || 'General'}`}
         breadcrumbs={[
-          { label: 'Employees', to: '/employees' },
+          { label: isEmployee ? 'My Space' : 'Employees', to: isEmployee ? '/my-space' : '/employees' },
           { label: employee.name }
         ]}
         actions={
@@ -85,34 +116,36 @@ export default function EmployeeDetailPage() {
             <Button 
               variant="outline" 
               size="sm" 
-              onClick={() => navigate('/employees')}
+              onClick={() => navigate(isEmployee ? '/my-space' : '/employees')}
               className="gap-1.5"
             >
               <ArrowLeft size={14} />
-              <span>Back</span>
+              <span>{isEmployee ? 'My Space' : 'Back'}</span>
             </Button>
 
-            {isEditing ? (
-              <Button 
-                onClick={handleSubmit(onSubmit)} 
-                variant="primary" 
-                size="sm" 
-                className="gap-1.5 shadow-sm"
-                isLoading={updateEmployee.isLoading}
-              >
-                <Save size={14} />
-                <span>Save Changes</span>
-              </Button>
-            ) : (
-              <Button 
-                onClick={() => setIsEditing(true)} 
-                variant="secondary" 
-                size="sm" 
-                className="gap-1.5"
-              >
-                <Edit3 size={14} />
-                <span>Edit Profile</span>
-              </Button>
+            {canEdit && (
+              isEditing ? (
+                <Button 
+                  onClick={handleSubmit(onSubmit)} 
+                  variant="primary" 
+                  size="sm" 
+                  className="gap-1.5 shadow-sm"
+                  isLoading={updateEmployee.isLoading}
+                >
+                  <Save size={14} />
+                  <span>Save Changes</span>
+                </Button>
+              ) : (
+                <Button 
+                  onClick={() => setIsEditing(true)} 
+                  variant="secondary" 
+                  size="sm" 
+                  className="gap-1.5"
+                >
+                  <Edit3 size={14} />
+                  <span>Edit Profile</span>
+                </Button>
+              )
             )}
           </div>
         }
@@ -163,25 +196,29 @@ export default function EmployeeDetailPage() {
                 {employee.timeOffCount ? <span className="ml-0.5 px-1.5 py-0.2 rounded-full bg-accent-amber/20 text-accent-amber text-[10px]">{employee.timeOffCount}</span> : null}
               </Button>
             </Link>
-            <Link to={`/contracts?employee_id=${id}`}>
-              <Button variant="outline" size="sm" className="gap-1.5 bg-surface-3/50 text-xs">
-                <FileText size={13} className="text-accent-blue" />
-                <span>Contracts</span>
-                {employee.contractsCount ? <span className="ml-0.5 px-1.5 py-0.2 rounded-full bg-accent-blue/20 text-accent-blue text-[10px]">{employee.contractsCount}</span> : null}
-              </Button>
-            </Link>
+            {canViewContracts && (
+              <Link to={`/contracts?employee_id=${id}`}>
+                <Button variant="outline" size="sm" className="gap-1.5 bg-surface-3/50 text-xs">
+                  <FileText size={13} className="text-accent-blue" />
+                  <span>Contracts</span>
+                  {employee.contractsCount ? <span className="ml-0.5 px-1.5 py-0.2 rounded-full bg-accent-blue/20 text-accent-blue text-[10px]">{employee.contractsCount}</span> : null}
+                </Button>
+              </Link>
+            )}
             <Link to={`/attendance?employee_id=${id}`}>
               <Button variant="outline" size="sm" className="gap-1.5 bg-surface-3/50 text-xs">
                 <Calendar size={13} className="text-accent-emerald" />
                 <span>Attendance</span>
               </Button>
             </Link>
-            <Link to={`/time-off/allocations?employee_id=${id}`}>
-              <Button variant="outline" size="sm" className="gap-1.5 bg-surface-3/50 text-xs">
-                <Layers size={13} className="text-accent-cyan" />
-                <span>Allocations</span>
-              </Button>
-            </Link>
+            {canViewAllocations && (
+              <Link to={`/time-off/allocations?employee_id=${id}`}>
+                <Button variant="outline" size="sm" className="gap-1.5 bg-surface-3/50 text-xs">
+                  <Layers size={13} className="text-accent-cyan" />
+                  <span>Allocations</span>
+                </Button>
+              </Link>
+            )}
             <Link to={`/payslips?employee_id=${id}`}>
               <Button variant="outline" size="sm" className="gap-1.5 bg-surface-3/50 text-xs">
                 <Wallet size={13} className="text-accent-purple" />

@@ -1,4 +1,5 @@
 import React from 'react';
+import { Check } from 'lucide-react';
 
 const Wizard = ({ steps = [], currentStep, onStepClick, children }) => {
   return (
@@ -17,30 +18,32 @@ const Wizard = ({ steps = [], currentStep, onStepClick, children }) => {
                   {/* Line connecting steps */}
                   {!isLast && (
                     <div className="absolute inset-0 flex items-center" aria-hidden="true">
-                      <div className={`h-0.5 w-full ${isCompleted ? 'bg-[#4F7CFF]' : 'bg-gray-700'}`}></div>
+                      <div className={`h-0.5 w-full transition-colors duration-300 ${isCompleted ? 'bg-accent-blue' : 'bg-border-medium'}`}></div>
                     </div>
                   )}
                   
                   <div 
-                    className={`relative flex h-8 w-8 items-center justify-center rounded-full 
-                      ${isCompleted ? 'bg-[#4F7CFF] hover:bg-blue-600' : isActive ? 'border-2 border-[#4F7CFF] bg-[#161B22]' : 'border-2 border-gray-600 bg-[#161B22]'}
+                    className={`relative flex h-8 w-8 items-center justify-center rounded-full transition-all duration-200 
+                      ${isCompleted 
+                        ? 'bg-accent-blue hover:brightness-110 shadow-[0_0_12px_rgba(79,124,255,0.3)]' 
+                        : isActive 
+                          ? 'border-2 border-accent-blue bg-surface-2 shadow-[0_0_12px_rgba(79,124,255,0.2)]' 
+                          : 'border-2 border-border-medium bg-surface-2'}
                       ${canClick ? 'cursor-pointer' : 'cursor-default'}
                     `}
                     onClick={() => canClick && onStepClick(index)}
                   >
                     {isCompleted ? (
-                      <svg className="h-5 w-5 text-white" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                        <path fillRule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clipRule="evenodd" />
-                      </svg>
+                      <Check className="h-4 w-4 text-white" />
                     ) : isActive ? (
-                      <span className="text-sm font-medium text-[#4F7CFF]">{index + 1}</span>
+                      <span className="text-sm font-medium text-accent-blue">{index + 1}</span>
                     ) : (
-                      <span className="text-sm font-medium text-gray-500">{index + 1}</span>
+                      <span className="text-sm font-medium text-text-muted">{index + 1}</span>
                     )}
                   </div>
                   
                   <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 w-max text-xs font-medium text-center">
-                    <span className={isActive ? 'text-[#4F7CFF]' : isCompleted ? 'text-gray-300' : 'text-gray-500'}>
+                    <span className={`transition-colors duration-200 ${isActive ? 'text-accent-blue' : isCompleted ? 'text-text-main' : 'text-text-muted'}`}>
                       {step.label}
                     </span>
                   </div>
@@ -51,7 +54,7 @@ const Wizard = ({ steps = [], currentStep, onStepClick, children }) => {
         </nav>
       </div>
 
-      <div className="mt-12 bg-[#161B22] border border-[rgba(255,255,255,0.08)] rounded-lg p-6">
+      <div className="mt-12 bg-surface-2 border border-border-subtle rounded-2xl p-6 shadow-card">
         {children}
       </div>
     </div>

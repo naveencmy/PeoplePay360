@@ -5,9 +5,13 @@ import AvatarBadge from '@/components/ui/AvatarBadge';
 import StatusPill from '@/components/ui/StatusPill';
 import { useUpdateEmployee } from '@/hooks/useEmployees';
 
+import useAuthStore from '@/store/authStore';
+
 export default function EmployeeKanban({ employees }) {
   const navigate = useNavigate();
   const updateDepartment = useUpdateEmployee();
+  const { hasRole } = useAuthStore();
+  const canManage = hasRole('ADMIN', 'HR');
 
   // Group by department
   const columns = ['Engineering', 'HR', 'Sales', 'Marketing', 'Unassigned'].map(dept => ({
@@ -20,6 +24,7 @@ export default function EmployeeKanban({ employees }) {
   }));
 
   const handleDragEnd = async (result) => {
+    if (!canManage) return;
     const { destination, draggableId } = result;
     if (!destination) return;
     

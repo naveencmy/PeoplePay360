@@ -14,7 +14,12 @@ import {
   Search, Lock, Mail, Edit2 
 } from 'lucide-react';
 
+import useAuthStore from '@/store/authStore';
+
 export const AdminUsersPage = () => {
+  const { hasRole } = useAuthStore();
+  const isAdmin = hasRole('ADMIN');
+
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState('All');
   const [selectedUser, setSelectedUser] = useState(null);
@@ -23,6 +28,7 @@ export const AdminUsersPage = () => {
   const { data: users = [], isLoading } = useUsers();
 
   const handleOpenPanel = (user = null) => {
+    if (!isAdmin) return;
     setSelectedUser(user);
     setIsPanelOpen(true);
   };
@@ -55,15 +61,17 @@ export const AdminUsersPage = () => {
           { label: 'Users & Roles' }
         ]}
         actions={
-          <Button 
-            onClick={() => handleOpenPanel()} 
-            variant="primary" 
-            size="sm"
-            className="gap-2 shadow-sm"
-          >
-            <Plus className="w-4 h-4" />
-            <span>New System User</span>
-          </Button>
+          isAdmin && (
+            <Button 
+              onClick={() => handleOpenPanel()} 
+              variant="primary" 
+              size="sm"
+              className="gap-2 shadow-sm"
+            >
+              <Plus className="w-4 h-4" />
+              <span>New System User</span>
+            </Button>
+          )
         }
       />
 
@@ -200,12 +208,16 @@ export const AdminUsersPage = () => {
                       <StatusPill status={user.status || 'Active'} />
                     </td>
                     <td className="py-3.5 px-4 text-right">
-                      <button 
-                        onClick={(e) => { e.stopPropagation(); handleOpenPanel(user); }}
-                        className="text-xs text-accent-blue font-semibold hover:underline"
-                      >
-                        Configure
-                      </button>
+                      {isAdmin ? (
+                        <button 
+                          onClick={(e) => { e.stopPropagation(); handleOpenPanel(user); }}
+                          className="text-xs text-accent-blue font-semibold hover:underline"
+                        >
+                          Configure
+                        </button>
+                      ) : (
+                        <span className="text-text-muted text-xs">Read Only</span>
+                      )}
                     </td>
                   </tr>
                 ))}

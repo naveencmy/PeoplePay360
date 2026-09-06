@@ -120,14 +120,41 @@ async function getContractsForPeriod(employeeIds, periodStart, periodEnd) {
  * List all contracts
  */
 async function listContracts(query = {}) {
-  const result = await contractRepo.raw(
-    `SELECT c.*, e.first_name, e.last_name, e.employee_code, s.name as structure_name 
+  let sql = `SELECT c.*, e.first_name, e.last_name, e.employee_code, s.name as structure_name 
      FROM contracts c
      JOIN employees e ON e.id = c.employee_id
      LEFT JOIN salary_structures s ON s.id = c.structure_id
-     WHERE c.deleted_at IS NULL
-     ORDER BY c.created_at DESC`
-  );
+     WHERE c.deleted_at IS NULL`;
+  const params = [];
+
+  const employeeId = query.employee_id || query.employeeId;
+  if (employeeId && /^[0-9a-fA-F-]{36}$/.test(String(employeeId).trim())) {
+    params.push(String(employeeId).trim());
+    sql += ` AND c.employee_id = $${params.length}`;
+  }
+
+  const state = query.state || query.status;
+  if (state && state.toLowerCase() !== 'all') {
+    params.push(state.toUpperCase());
+    sql += ` AND UPPER(c.state) = $${params.length}`;
+  }
+
+  const search = query.search || query.q;
+  if (search && String(search).trim()) {
+    params.push(`%${String(search).trim().toLowerCase()}%`);
+    sql += ` AND (
+      LOWER(c.name) LIKE $${params.length} OR 
+      LOWER(c.department) LIKE $${params.length} OR 
+      LOWER(c.job_title) LIKE $${params.length} OR 
+      LOWER(e.first_name) LIKE $${params.length} OR 
+      LOWER(e.last_name) LIKE $${params.length} OR 
+      LOWER(e.employee_code) LIKE $${params.length} OR
+      LOWER(CONCAT(e.first_name, ' ', e.last_name)) LIKE $${params.length}
+    )`;
+  }
+
+  sql += ` ORDER BY c.created_at DESC`;
+  const result = await contractRepo.raw(sql, params);
   return result.rows;
 }
 

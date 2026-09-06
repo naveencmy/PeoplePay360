@@ -99,17 +99,20 @@ async function addRule(data) {
   if (data.computation_type === 'FORMULA' && data.formula) {
     const existingRules = await salaryRuleRepo.getByStructure(data.structure_id);
     const availableVars = existingRules.map((r) => r.code);
+    if (!availableVars.includes('WAGE')) availableVars.push('WAGE');
     const validation = validateFormula(data.formula, availableVars);
     if (!validation.valid) {
       throw AppError.badRequest(`Invalid formula: ${validation.error}`);
     }
   }
 
-  // Validate computation_basis reference
+  // Validate computation_basis reference (WAGE is a built-in contract variable)
   if (data.computation_type === 'PERCENTAGE' && data.computation_basis) {
-    const basisRule = await salaryRuleRepo.getByCode(data.structure_id, data.computation_basis);
-    if (!basisRule) {
-      throw AppError.badRequest(`Computation basis "${data.computation_basis}" does not exist in this structure`);
+    if (data.computation_basis !== 'WAGE') {
+      const basisRule = await salaryRuleRepo.getByCode(data.structure_id, data.computation_basis);
+      if (!basisRule) {
+        throw AppError.badRequest(`Computation basis "${data.computation_basis}" does not exist in this structure`);
+      }
     }
   }
 
@@ -135,9 +138,20 @@ async function updateRule(ruleId, data) {
   if (data.computation_type === 'FORMULA' && data.formula) {
     const existingRules = await salaryRuleRepo.getByStructure(rule.structure_id);
     const availableVars = existingRules.filter((r) => r.id !== ruleId).map((r) => r.code);
+    if (!availableVars.includes('WAGE')) availableVars.push('WAGE');
     const validation = validateFormula(data.formula, availableVars);
     if (!validation.valid) {
       throw AppError.badRequest(`Invalid formula: ${validation.error}`);
+    }
+  }
+
+  // Validate computation_basis reference (WAGE is a built-in contract variable)
+  if (data.computation_type === 'PERCENTAGE' && data.computation_basis) {
+    if (data.computation_basis !== 'WAGE') {
+      const basisRule = await salaryRuleRepo.getByCode(rule.structure_id, data.computation_basis);
+      if (!basisRule) {
+        throw AppError.badRequest(`Computation basis "${data.computation_basis}" does not exist in this structure`);
+      }
     }
   }
 

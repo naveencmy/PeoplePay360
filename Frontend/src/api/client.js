@@ -59,10 +59,11 @@ export const handleApiError = (error) => {
     // The request was made and the server responded with a status code
     // that falls out of the range of 2xx
     const { data } = error.response;
+    const msg = data?.message || data?.error?.message || (Array.isArray(data?.errors) ? data.errors.map(e => e.message).join(', ') : null) || 'Server Error';
     return {
-      code: data?.error?.code || error.response.status,
-      message: data?.error?.message || 'Server Error',
-      details: data?.error?.details || null,
+      code: data?.code || data?.error?.code || error.response.status,
+      message: msg,
+      details: data?.errors || data?.error?.details || data?.details || null,
     };
   } else if (error.request) {
     // The request was made but no response was received

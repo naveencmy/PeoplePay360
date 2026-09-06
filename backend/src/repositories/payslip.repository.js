@@ -76,19 +76,30 @@ class PayslipRepository extends BaseRepository {
   }
 
   /**
-   * Check for duplicate payslip (same employee + period)
+   * Check for duplicate payslip (same employee + payrun, or same employee + period)
    */
-  async hasDuplicate(employeeId, periodStart, periodEnd, excludeId = null) {
+  async hasDuplicate(employeeId, periodStart, periodEnd, excludeId = null, payrunId = null) {
     let sql = `SELECT COUNT(*) AS count FROM payslips 
                WHERE employee_id = $1 
-                 AND period_start = $2 AND period_end = $3 
                  AND status != 'CANCELLED' 
                  AND deleted_at IS NULL`;
-    const params = [employeeId, periodStart, periodEnd];
+    const params = [employeeId];
+    let pIdx = 2;
+
+    if (payrunId) {
+      sql += ` AND payrun_id = $${pIdx}`;
+      params.push(payrunId);
+      pIdx++;
+    } else {
+      sql += ` AND period_start = $${pIdx} AND period_end = $${pIdx + 1}`;
+      params.push(periodStart, periodEnd);
+      pIdx += 2;
+    }
 
     if (excludeId) {
-      sql += ' AND id != $4';
+      sql += ` AND id != $${pIdx}`;
       params.push(excludeId);
+      pIdx++;
     }
 
     const result = await this.raw(sql, params);

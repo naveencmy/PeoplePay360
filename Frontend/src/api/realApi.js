@@ -51,7 +51,7 @@ export const getEmployees = async (filters = {}) => {
   if (filters.search) params.search = filters.search;
   if (filters.department && filters.department !== 'All') params.department = filters.department;
   if (filters.page) params.page = filters.page;
-  if (filters.limit) params.limit = filters.limit || 50;
+  params.limit = filters.limit || 100;
 
   const res = await apiClient.get('/employees', { params });
   const rawList = Array.isArray(res) ? res : (res?.employees || res?.data || []);
@@ -160,8 +160,38 @@ export const createContract = async (data) => {
   return await apiClient.post('/contracts', payload);
 };
 
-export const updateContract = async (id, data) => {
-  return await apiClient.put(`/contracts/${id}`, data);
+export const updateContract = async (id, rawData = {}) => {
+  const data = rawData.data || rawData;
+  const payload = {};
+  if (data.name || data.reference) payload.name = data.name || data.reference;
+  if (data.wage !== undefined && data.wage !== '') payload.wage = parseFloat(data.wage);
+  if (data.wage_type) payload.wage_type = data.wage_type;
+
+  const structId = data.structure_id || data.salaryStructureId;
+  if (structId && typeof structId === 'string' && structId.length > 20) {
+    payload.structure_id = structId;
+  }
+
+  const startDate = data.date_start || data.startDate;
+  if (startDate) {
+    payload.date_start = startDate.includes('T') ? startDate.split('T')[0] : startDate;
+  }
+
+  const endDate = data.date_end !== undefined ? data.date_end : data.endDate;
+  if (endDate !== undefined) {
+    payload.date_end = endDate ? (endDate.includes('T') ? endDate.split('T')[0] : endDate) : null;
+  }
+
+  const stateVal = data.state || data.status;
+  if (stateVal) {
+    payload.state = stateVal.toUpperCase();
+  }
+
+  if (data.department) payload.department = data.department;
+  if (data.job_title || data.jobPosition) payload.job_title = data.job_title || data.jobPosition;
+  if (data.notes !== undefined) payload.notes = data.notes || '';
+
+  return await apiClient.put(`/contracts/${id}`, payload);
 };
 
 // ═══ SCHEDULES (PostgreSQL Live) ═══
@@ -190,15 +220,36 @@ export const updateSchedule = async (id, data) => {
 
 // ═══ ATTENDANCE ═══
 export const getAttendance = async (filters = {}) => {
-  const res = await apiClient.get('/attendance', { params: filters });
+  const params = {};
+  if (filters.employee_id) params.employee_id = filters.employee_id;
+  if (filters.employeeSearch) {
+    if (/^[0-9a-fA-F-]{36}$/.test(filters.employeeSearch.trim())) {
+      params.employee_id = filters.employeeSearch.trim();
+    } else {
+      params.search = filters.employeeSearch.trim();
+    }
+  }
+  if (filters.search) params.search = filters.search;
+  if (filters.dateFrom || filters.start_date) params.start_date = filters.dateFrom || filters.start_date;
+  if (filters.dateTo || filters.end_date) params.end_date = filters.dateTo || filters.end_date;
+  if (filters.status && filters.status !== 'All') params.status = filters.status;
+
+  const res = await apiClient.get('/attendance', { params });
   const raw = Array.isArray(res) ? res : (res?.data || []);
-  const enriched = raw.map((a) => ({
-    ...a,
-    employeeName: `${a.first_name || ''} ${a.last_name || ''}`.trim() || a.employeeName || 'Employee',
-    employeeAvatar: a.employeeAvatar || null,
-    status: a.status || 'Present',
-    date: a.date?.split?.('T')?.[0] || a.date,
-  }));
+  const enriched = raw.map((a) => {
+    const name = `${a.first_name || ''} ${a.last_name || ''}`.trim() || a.employeeName || 'Employee';
+    const computedStatus = a.status || (a.check_out ? 'Present' : (a.check_in ? 'Missing Checkout' : 'Present'));
+    return {
+      ...a,
+      employeeName: name,
+      employeeAvatar: a.employeeAvatar || null,
+      status: computedStatus,
+      date: a.date?.split?.('T')?.[0] || a.date,
+      checkIn: a.check_in || a.checkIn,
+      checkOut: a.check_out || a.checkOut,
+      workedHours: a.worked_hours !== undefined ? parseFloat(a.worked_hours) : (a.workedHours !== undefined ? parseFloat(a.workedHours) : 0),
+    };
+  });
   enriched.data = enriched;
   enriched.total = enriched.length;
   return enriched;
@@ -272,11 +323,30 @@ export const getLeaveRequests = async (filters = {}) => {
 };
 
 export const createLeaveRequest = async (data) => {
+  let leaveType = data.leave_type || data.typeName || 'PAID_LEAVE';
+  const upper = String(leaveType).toUpperCase();
+  if (upper.includes('CASUAL')) leaveType = 'CASUAL';
+  else if (upper.includes('SICK')) leaveType = 'SICK';
+  else if (upper.includes('EARN')) leaveType = 'EARNED';
+  else if (upper.includes('MATERN')) leaveType = 'MATERNITY';
+  else if (upper.includes('PATERN')) leaveType = 'PATERNITY';
+  else if (upper.includes('UNPAID')) leaveType = 'UNPAID';
+  else if (upper.includes('COMP')) leaveType = 'COMP_OFF';
+  else leaveType = 'PAID_LEAVE';
+
+  let empId = data.employee_id || data.employeeId;
+  if (!empId || empId === '1' || empId === '2') {
+    try {
+      const auth = JSON.parse(localStorage.getItem('auth-storage') || '{}');
+      empId = auth?.state?.user?.employeeId;
+    } catch (_e) {}
+  }
+
   const payload = {
-    employee_id: data.employee_id || data.employeeId,
-    leave_type: data.leave_type || data.typeName || 'PAID_LEAVE',
-    date_from: data.date_from || data.startDate,
-    date_to: data.date_to || data.endDate,
+    employee_id: empId,
+    leave_type: leaveType,
+    date_from: data.date_from || data.startDate || data.fromDate,
+    date_to: data.date_to || data.endDate || data.toDate,
     duration: parseFloat(data.duration || data.days || 1),
     reason: data.reason || 'Personal request',
   };
@@ -291,18 +361,36 @@ export const rejectLeaveRequest = async (id, reason = 'Not approved') => {
   return await apiClient.put(`/timeoff/${id}/reject`, { reason });
 };
 
+export const getTimeOffBalance = async (employeeId) => {
+  if (!employeeId) return [];
+  const res = await apiClient.get(`/timeoff/balance/${employeeId}`);
+  return Array.isArray(res) ? res : (res?.data || []);
+};
+
 export const getLeaveAllocations = async (filters = {}) => {
   const [employees, requests] = await Promise.all([
     getEmployees(),
     getLeaveRequests()
   ]);
   const reqList = Array.isArray(requests) ? requests : (requests?.data || []);
-  const list = employees.map((emp) => {
+  const empList = Array.isArray(employees) ? employees : (employees?.data || []);
+  
+  const uniqueEmployees = [];
+  const seenIds = new Set();
+  for (const emp of empList) {
+    const id = emp?.id || emp?.employee_id;
+    if (id && !seenIds.has(id)) {
+      seenIds.add(id);
+      uniqueEmployees.push(emp);
+    }
+  }
+
+  const list = uniqueEmployees.map((emp, idx) => {
     const empRequests = reqList.filter(r => (r.employee_id === emp.id || r.employeeName === emp.name) && (r.status || '').toUpperCase() === 'APPROVED');
     const taken = empRequests.reduce((sum, r) => sum + (parseFloat(r.duration || r.days) || 0), 0);
     const allocated = 24;
     return {
-      id: `ALLOC-${emp.id.slice(0, 8)}`,
+      id: emp.id ? `ALLOC-${emp.id}` : `ALLOC-${idx}`,
       employee_id: emp.id,
       employeeName: emp.name,
       department: emp.department,
@@ -319,16 +407,68 @@ export const getLeaveAllocations = async (filters = {}) => {
   return list;
 };
 
+const DEFAULT_LEAVE_TYPES = [
+  { id: 'CASUAL', name: 'Casual Leave', code: 'CASUAL', unit: 'Days', allocationRequired: false, approvalRequired: true, payrollIntegration: true, policyNotes: 'Standard casual leave policy' },
+  { id: 'PAID_LEAVE', name: 'Paid Annual Leave', code: 'PAID_LEAVE', unit: 'Days', allocationRequired: true, approvalRequired: true, payrollIntegration: true, policyNotes: 'Mandatory statutory annual paid leave' },
+  { id: 'SICK', name: 'Sick Leave', code: 'SICK', unit: 'Days', allocationRequired: true, approvalRequired: true, payrollIntegration: true, policyNotes: 'Medical leave with doctor certificate requirement' },
+  { id: 'EARNED', name: 'Earned Leave', code: 'EARNED', unit: 'Days', allocationRequired: true, approvalRequired: true, payrollIntegration: true, policyNotes: 'Accrued based on service tenure' },
+  { id: 'UNPAID', name: 'Unpaid Leave', code: 'UNPAID', unit: 'Days', allocationRequired: false, approvalRequired: true, payrollIntegration: true, policyNotes: 'Leave without pay (LOP)' },
+  { id: 'COMP_OFF', name: 'Compensatory Off', code: 'COMP_OFF', unit: 'Days', allocationRequired: false, approvalRequired: true, payrollIntegration: true, policyNotes: 'Awarded for overtime / weekend duty' },
+];
+
 export const getTimeOffTypes = async () => {
-  return [
-    { id: 'TOT-001', name: 'Paid Leave', code: 'PAID_LEAVE', unit: 'Days', allocationRequired: true, approvalRequired: true, payrollIntegration: true },
-    { id: 'TOT-002', name: 'Sick Leave', code: 'SICK_LEAVE', unit: 'Days', allocationRequired: true, approvalRequired: true, payrollIntegration: true },
-    { id: 'TOT-003', name: 'Casual Leave', code: 'CASUAL_LEAVE', unit: 'Days', allocationRequired: false, approvalRequired: true, payrollIntegration: true },
-  ];
+  try {
+    const custom = JSON.parse(localStorage.getItem('peoplepay360_leave_policies') || '[]');
+    const map = new Map();
+    DEFAULT_LEAVE_TYPES.forEach(t => map.set(t.id, t));
+    custom.forEach(c => map.set(c.id, { ...map.get(c.id), ...c }));
+    return Array.from(map.values());
+  } catch {
+    return DEFAULT_LEAVE_TYPES;
+  }
 };
 
 export const createTimeOffType = async (data) => {
-  return { id: `TOT-${Date.now().toString().slice(-3)}`, ...data };
+  const code = (data.code || data.name || 'CUSTOM').toUpperCase().replace(/[^A-Z0-9]/g, '_').slice(0, 20);
+  const id = data.id || `POLICY-${Date.now()}`;
+  const newType = {
+    id,
+    name: data.name,
+    code,
+    unit: data.unit || 'Days',
+    allocationRequired: data.allocationRequired ?? true,
+    approvalRequired: data.approvalRequired ?? true,
+    payrollIntegration: data.payrollIntegration ?? false,
+    policyNotes: data.policyNotes || '',
+    createdAt: new Date().toISOString(),
+  };
+
+  try {
+    const existing = JSON.parse(localStorage.getItem('peoplepay360_leave_policies') || '[]');
+    const updated = [newType, ...existing.filter(e => e.id !== id && e.name !== data.name)];
+    localStorage.setItem('peoplepay360_leave_policies', JSON.stringify(updated));
+  } catch (_e) {}
+
+  return newType;
+};
+
+export const updateTimeOffType = async (id, data) => {
+  const updatedType = {
+    id,
+    ...data,
+    updatedAt: new Date().toISOString(),
+  };
+  try {
+    const existing = JSON.parse(localStorage.getItem('peoplepay360_leave_policies') || '[]');
+    const idx = existing.findIndex(e => e.id === id);
+    if (idx >= 0) {
+      existing[idx] = { ...existing[idx], ...updatedType };
+    } else {
+      existing.push(updatedType);
+    }
+    localStorage.setItem('peoplepay360_leave_policies', JSON.stringify(existing));
+  } catch (_e) {}
+  return updatedType;
 };
 
 // ═══ SALARY STRUCTURES & RULES ═══
@@ -341,6 +481,11 @@ export const getSalaryStructures = async () => {
     contractsCount: s.contracts_count ?? 0,
     status: s.active ? 'Active' : 'Archived',
   }));
+};
+
+export const getSalaryStructure = async (id) => {
+  const res = await apiClient.get(`/salary/${id}`);
+  return res?.data || res;
 };
 
 export const createSalaryStructure = async (data) => {
@@ -376,16 +521,42 @@ export const validateGraph = async (structureId) => {
 };
 
 // ═══ PAYRUNS (STATE MACHINE) ═══
+const formatDateStr = (d) => {
+  if (!d) return '';
+  try {
+    const dt = new Date(d);
+    if (isNaN(dt.getTime())) return String(d).slice(0, 10);
+    return dt.toISOString().slice(0, 10);
+  } catch {
+    return String(d).slice(0, 10);
+  }
+};
+
 export const getPayruns = async (filters = {}) => {
   const res = await apiClient.get('/payruns', { params: filters });
   const raw = Array.isArray(res) ? res : (res?.data || []);
-  const enriched = raw.map((p) => ({
-    ...p,
-    periodName: p.name || 'Payroll Cycle',
-    totalAmount: formatINR(p.total_net || p.totalAmount || 0),
-    employeeCount: p.payslip_count || p.employeeCount || 10,
-    status: (p.state || p.status || 'Draft').charAt(0).toUpperCase() + (p.state || p.status || 'Draft').slice(1).toLowerCase(),
-  }));
+  const enriched = raw.map((p) => {
+    let empCount = parseInt(p.payslip_count, 10) || 0;
+    if (empCount === 0 && p.notes) {
+      try {
+        const parsed = typeof p.notes === 'string' ? JSON.parse(p.notes) : p.notes;
+        if (parsed?.employee_ids?.length) {
+          empCount = parsed.employee_ids.length;
+        }
+      } catch {}
+    }
+    const pStart = formatDateStr(p.period_start || p.periodStart);
+    const pEnd = formatDateStr(p.period_end || p.periodEnd);
+    return {
+      ...p,
+      periodName: p.name || 'Payroll Cycle',
+      periodStart: pStart,
+      periodEnd: pEnd,
+      totalAmount: formatINR(p.total_net || p.totalAmount || 0),
+      employeeCount: empCount,
+      status: (p.state || p.status || 'Draft').charAt(0).toUpperCase() + (p.state || p.status || 'Draft').slice(1).toLowerCase(),
+    };
+  });
   enriched.data = enriched;
   enriched.total = enriched.length;
   return enriched;
@@ -394,13 +565,29 @@ export const getPayruns = async (filters = {}) => {
 export const getPayrun = async (id) => {
   const p = await apiClient.get(`/payruns/${id}`);
   if (!p) return null;
+  let empCount = parseInt(p.payslip_count, 10) || 0;
+  if (empCount === 0 && p.notes) {
+    try {
+      const parsed = typeof p.notes === 'string' ? JSON.parse(p.notes) : p.notes;
+      if (parsed?.employee_ids?.length) {
+        empCount = parsed.employee_ids.length;
+      }
+    } catch {}
+  }
+  if (empCount === 0 && p.eligible_count) {
+    empCount = parseInt(p.eligible_count, 10) || 0;
+  }
+  const pStart = formatDateStr(p.period_start || p.periodStart);
+  const pEnd = formatDateStr(p.period_end || p.periodEnd);
   return {
     ...p,
     periodName: p.name || 'Payroll Cycle',
+    periodStart: pStart,
+    periodEnd: pEnd,
     totalGross: formatINR(p.total_gross || 0),
     totalDeductions: formatINR(p.total_deductions || 0),
     totalNet: formatINR(p.total_net || 0),
-    employeeCount: p.payslip_count || 10,
+    employeeCount: empCount,
     status: (p.state || p.status || 'Draft').charAt(0).toUpperCase() + (p.state || p.status || 'Draft').slice(1).toLowerCase(),
   };
 };
@@ -413,8 +600,10 @@ export const createPayrun = async (data) => {
     structure_id: data.structure_id || data.structureId,
     department: data.department || null,
     notes: data.notes || '',
+    employee_ids: data.employee_ids || data.employeeIds || [],
   };
-  return await apiClient.post('/payruns', payload);
+  const res = await apiClient.post('/payruns', payload);
+  return res?.data || res;
 };
 
 export const addEmployeesToPayrun = async (id, employeeIds) => {
@@ -492,93 +681,94 @@ export const generatePayslipPDF = async (id) => {
 // ═══ DASHBOARD ═══
 export const getDashboardKPIs = async (period, department) => {
   try {
-    const kpis = await apiClient.get('/dashboard/kpis');
+    const kpis = await apiClient.get('/dashboard/kpis', { params: { period, department } });
+    const totalPaid = parseFloat(kpis.total_net_paid) || 0;
+    const avgSalary = parseFloat(kpis.average_salary || kpis.avg_salary) || 0;
+    const totalPayslips = parseInt(kpis.payslips_generated, 10) || 0;
+    const paidPayslips = parseInt(kpis.payslips_paid, 10) || 0;
+    const pendingPayslips = Math.max(0, totalPayslips - paidPayslips);
+    const activeEmployees = parseInt(kpis.total_employees, 10) || 0;
+
     return {
-      totalSalary: formatINR(kpis.total_net_paid || 1100000),
-      salaryDelta: '+5.4%',
-      payslips: String(kpis.payslips_generated || 10),
-      paidPayslips: String(kpis.payslips_generated || 10),
-      pendingPayslips: '0',
-      avgSalary: formatINR(kpis.avg_salary || 85000),
-      timeOffDays: `${kpis.approved_timeoff_days || 3} days`,
-      attendanceHealth: Math.round(kpis.attendance_health || 96),
-      presentDays: 22,
-      expectedDays: 22,
-      totalEmployees: 10,
-      activeContracts: 10,
-      payrollCost: parseFloat(kpis.total_net_paid) || 1100000,
-      leaveRequests: 1,
+      totalSalary: formatINR(totalPaid),
+      salaryDelta: '+0.0%',
+      payslips: String(totalPayslips),
+      paidPayslips: String(paidPayslips),
+      pendingPayslips: String(pendingPayslips),
+      avgSalary: formatINR(avgSalary),
+      timeOffDays: `${kpis.approved_timeoff_days || 0} days`,
+      timeOffRequests: kpis.timeoff_requests || 0,
+      attendanceHealth: Math.round(kpis.attendance_health || 0),
+      totalEmployees: activeEmployees,
+      activeContracts: activeEmployees,
+      payrollCost: totalPaid,
+      leaveRequests: kpis.timeoff_requests || 0,
     };
-  } catch {
+  } catch (error) {
+    console.error('Failed to fetch dashboard KPIs:', error);
     return {
-      totalSalary: '₹11,50,000',
-      salaryDelta: '+4.2%',
-      payslips: '10',
-      paidPayslips: '10',
+      totalSalary: '₹0',
+      salaryDelta: '+0.0%',
+      payslips: '0',
+      paidPayslips: '0',
       pendingPayslips: '0',
-      avgSalary: '₹85,000',
-      timeOffDays: '3 days',
-      attendanceHealth: 96,
-      presentDays: 22,
-      expectedDays: 22,
-      totalEmployees: 10,
-      activeContracts: 10,
-      payrollCost: 1150000,
-      leaveRequests: 1,
+      avgSalary: '₹0',
+      timeOffDays: '0 days',
+      attendanceHealth: 0,
+      totalEmployees: 0,
+      activeContracts: 0,
+      payrollCost: 0,
+      leaveRequests: 0,
     };
   }
 };
 
 export const getDashboardCharts = async (type, period) => {
   try {
-    const [deptRes, trendRes] = await Promise.all([
-      apiClient.get('/dashboard/salary-by-department'),
-      apiClient.get('/dashboard/trend'),
+    const [deptRes, trendRes, attRes, timeoffRes, statusRes] = await Promise.all([
+      apiClient.get('/dashboard/salary-by-department').catch(() => []),
+      apiClient.get('/dashboard/trend').catch(() => []),
+      apiClient.get('/dashboard/attendance-trend').catch(() => []),
+      apiClient.get('/dashboard/timeoff-summary').catch(() => null),
+      apiClient.get('/dashboard/status-counts').catch(() => null),
     ]);
+
+    const salaryByDept = Array.isArray(deptRes) ? deptRes.map((d) => ({
+      name: d.department,
+      value: parseFloat(d.total_net) || 0,
+      employee_count: parseInt(d.employee_count, 10) || 0,
+      average_net: parseFloat(d.average_net) || 0,
+    })) : [];
+
+    const salaryTrend = Array.isArray(trendRes) ? trendRes.map((t) => ({
+      month: t.month,
+      value: parseFloat(t.total_net) || 0,
+      payslip_count: parseInt(t.payslip_count, 10) || 0,
+    })) : [];
+
+    const attendanceTrend = Array.isArray(attRes) ? attRes : [];
+
     return {
-      salaryByDept: Array.isArray(deptRes) && deptRes.length > 0 ? deptRes.map((d) => ({ name: d.department, value: parseFloat(d.total_net) })) : [
-        { name: 'Engineering', value: 470000 },
-        { name: 'Sales', value: 255000 },
-        { name: 'Finance', value: 330000 },
-        { name: 'HR', value: 200000 },
-      ],
-      salaryTrend: Array.isArray(trendRes) && trendRes.length > 0 ? trendRes.map((t) => ({ month: t.month, value: parseFloat(t.total_net) })) : [
-        { month: 'Apr', value: 1050000 },
-        { month: 'May', value: 1080000 },
-        { month: 'Jun', value: 1100000 },
-        { month: 'Jul', value: 1120000 },
-        { month: 'Aug', value: 1150000 },
-        { month: 'Sep', value: 1150000 },
-      ],
-      headcountByDept: [
-        { name: 'Engineering', value: 4 },
-        { name: 'Sales', value: 2 },
-        { name: 'Finance', value: 2 },
-        { name: 'HR', value: 2 },
-      ],
+      salaryByDept,
+      salaryTrend,
+      attendanceTrend,
+      timeOff: timeoffRes || {
+        summary: { approved: 0, pending: 0, available: '0d' },
+        breakdown: [],
+      },
+      statusCounts: statusRes || { paid: 0, computed: 0, draft: 0, warnings: 0 },
     };
-  } catch {
+  } catch (error) {
+    console.error('Failed to fetch dashboard charts:', error);
     return {
-      salaryByDept: [
-        { name: 'Engineering', value: 470000 },
-        { name: 'Sales', value: 255000 },
-        { name: 'Finance', value: 330000 },
-        { name: 'HR', value: 200000 },
-      ],
-      salaryTrend: [
-        { month: 'Apr', value: 1050000 },
-        { month: 'May', value: 1080000 },
-        { month: 'Jun', value: 1100000 },
-        { month: 'Jul', value: 1120000 },
-        { month: 'Aug', value: 1150000 },
-        { month: 'Sep', value: 1150000 },
-      ],
-      headcountByDept: [
-        { name: 'Engineering', value: 4 },
-        { name: 'Sales', value: 2 },
-        { name: 'Finance', value: 2 },
-        { name: 'HR', value: 2 },
-      ],
+      salaryByDept: [],
+      salaryTrend: [],
+      attendanceTrend: [],
+      timeOff: {
+        summary: { approved: 0, pending: 0, available: '0d' },
+        breakdown: [],
+      },
+      statusCounts: { paid: 0, computed: 0, draft: 0, warnings: 0 },
     };
   }
 };
@@ -704,36 +894,16 @@ export const runSimulation = async (idOrData, overrides) => {
 
 // ═══ USERS (Live PostgreSQL Database) ═══
 export const getUsers = async () => {
-  try {
-    const res = await apiClient.get('/auth/users');
-    const list = Array.isArray(res) ? res : (res?.data || []);
-    if (list.length > 0) {
-      const mapped = list.map(u => ({
-        id: u.id,
-        name: `${u.first_name || ''} ${u.last_name || ''}`.trim() || u.email,
-        email: u.email,
-        role: (u.role || 'employee').toLowerCase(),
-        linkedEmployee: u.first_name ? `${u.first_name} ${u.last_name}` : null,
-        status: u.is_active ? 'Active' : 'Inactive',
-        department: u.department || 'General',
-      }));
-      mapped.data = mapped;
-      mapped.total = mapped.length;
-      return mapped;
-    }
-  } catch (_e) {}
-
-  // Fallback to active employees in database
-  const employees = await getEmployees();
-  const empList = Array.isArray(employees) ? employees : (employees?.data || []);
-  const mapped = empList.map((e, idx) => ({
-    id: `U-${e.id.slice(0, 8)}`,
-    name: e.name,
-    email: e.email,
-    role: idx === 0 ? 'admin' : idx === 1 ? 'hr_manager' : 'employee',
-    linkedEmployee: e.name,
-    status: e.status || 'Active',
-    department: e.department || 'General',
+  const res = await apiClient.get('/auth/users');
+  const list = Array.isArray(res) ? res : (res?.data || []);
+  const mapped = list.map(u => ({
+    id: u.id,
+    name: `${u.first_name || ''} ${u.last_name || ''}`.trim() || u.email,
+    email: u.email,
+    role: (u.role || 'EMPLOYEE').toUpperCase(),
+    linkedEmployee: u.first_name ? `${u.first_name} ${u.last_name}` : null,
+    status: u.is_active ? 'Active' : 'Inactive',
+    department: u.department || 'General',
   }));
   mapped.data = mapped;
   mapped.total = mapped.length;

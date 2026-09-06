@@ -9,7 +9,7 @@ const PAYRUN_STATES = ['DRAFT', 'COMPUTED', 'VALIDATED', 'PAID', 'ARCHIVED'];
 
 const VALID_TRANSITIONS = {
   DRAFT: ['COMPUTED', 'ARCHIVED'],
-  COMPUTED: ['VALIDATED', 'DRAFT', 'ARCHIVED'],  // Allow DRAFT for re-computation
+  COMPUTED: ['VALIDATED', 'DRAFT', 'ARCHIVED', 'COMPUTED'],  // Allow re-computation
   VALIDATED: ['PAID', 'COMPUTED', 'ARCHIVED'],    // Allow COMPUTED for re-validation
   PAID: ['ARCHIVED'],
   ARCHIVED: [],
@@ -21,7 +21,9 @@ const createPayrunSchema = z.object({
   period_end: z.string().min(1, 'Period end date is required'),
   structure_id: z.string().uuid('Invalid salary structure ID'),
   department: z.string().max(100).optional().nullable(),
-  notes: z.string().max(1000).optional(),
+  notes: z.string().max(4000).optional().nullable(),
+  employeeIds: z.array(z.string().uuid()).optional(),
+  employee_ids: z.array(z.string().uuid()).optional(),
 });
 
 const updatePayrunSchema = createPayrunSchema.partial();

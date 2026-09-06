@@ -8,6 +8,17 @@ const { AppError } = require('../middleware/error.middleware');
 // ─────────────────────────────────────────────────────────────────────────────
 
 async function resolveEmployeeId(req) {
+  // If role is EMPLOYEE, always force their own employee ID, never allow spoofing!
+  if (req.user?.role === 'EMPLOYEE') {
+    if (req.user.employeeId) return req.user.employeeId;
+    if (req.user.userId) {
+      const user = await userRepo.findById(req.user.userId);
+      if (user?.employee_id) return user.employee_id;
+    }
+    return null;
+  }
+
+  // For ADMIN / HR / MANAGER, allow employee_id query / body parameter
   let employeeId = req.body?.employee_id || req.query?.employee_id;
   if (typeof employeeId === 'string' && employeeId.trim()) {
     return employeeId.trim();
@@ -66,16 +77,28 @@ async function getTodayStatus(req, res) {
 }
 
 async function getSummary(req, res) {
+  let employeeId = req.query.employee_id;
+  if (req.user.role === 'EMPLOYEE') {
+    employeeId = await resolveEmployeeId(req);
+  }
   const summary = await attendanceService.getAttendanceSummary(
-    req.query.employee_id, req.query.start_date, req.query.end_date
+    employeeId, req.query.start_date, req.query.end_date
   );
   sendSuccess(res, summary);
 }
 
 async function getRecords(req, res) {
-  const employeeId = req.params.id || req.query.employee_id;
+  let employeeId = req.params.id || req.query.employee_id;
+  if (req.user.role === 'EMPLOYEE') {
+    const userEmpId = await resolveEmployeeId(req);
+    employeeId = userEmpId; // Force self-only
+  }
+  const startDate = req.query.start_date || req.query.dateFrom;
+  const endDate = req.query.end_date || req.query.dateTo;
+  const search = req.user.role === 'EMPLOYEE' ? null : (req.query.search || req.query.employeeSearch);
+  const status = req.query.status;
   const records = await attendanceService.getAttendanceRecords(
-    employeeId, req.query.start_date, req.query.end_date
+    employeeId, startDate, endDate, search, status
   );
   sendSuccess(res, records);
 }

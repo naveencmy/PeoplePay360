@@ -27,7 +27,7 @@ function authenticate(req, res, next) {
     req.user = {
       userId: decoded.userId,
       email: decoded.email,
-      role: decoded.role,
+      role: (decoded.role || 'EMPLOYEE').toUpperCase(),
       employeeId: decoded.employeeId || null,
     };
     next();
@@ -63,7 +63,21 @@ function authorize(...allowedRoles) {
       });
     }
 
-    if (!allowedRoles.includes(req.user.role)) {
+    const userRole = (req.user.role || '').toUpperCase();
+    const normalizedAllowed = allowedRoles.map(r => r.toUpperCase());
+
+    if (userRole === 'ADMIN') {
+      return next();
+    }
+
+    const effective = [userRole];
+    if (userRole === 'HR_PAYROLL_MANAGER') effective.push('HR', 'PAYROLL_MANAGER', 'HR_PAYROLL_USER', 'HR_MANAGER');
+    if (userRole === 'HR_PAYROLL_USER') effective.push('HR', 'PAYROLL_USER', 'HR_MANAGER');
+    if (userRole === 'HR_MANAGER') effective.push('HR');
+    if (userRole === 'HR') effective.push('HR_MANAGER', 'HR_PAYROLL_MANAGER', 'HR_PAYROLL_USER');
+
+    const hasPermission = normalizedAllowed.some(r => effective.includes(r));
+    if (!hasPermission) {
       return res.status(403).json({
         success: false,
         message: `Access denied. Required roles: ${allowedRoles.join(', ')}`,
@@ -88,7 +102,7 @@ function optionalAuth(req, res, next) {
       req.user = {
         userId: decoded.userId,
         email: decoded.email,
-        role: decoded.role,
+        role: (decoded.role || 'EMPLOYEE').toUpperCase(),
       };
     } catch {
       // Token invalid — proceed without user context
@@ -104,6 +118,7 @@ const ROLES = Object.freeze({
   HR: 'HR',
   MANAGER: 'MANAGER',
   EMPLOYEE: 'EMPLOYEE',
+  AUDITOR: 'AUDITOR',
 });
 
 module.exports = { authenticate, authorize, optionalAuth, ROLES };

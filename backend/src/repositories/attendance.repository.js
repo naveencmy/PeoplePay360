@@ -60,14 +60,14 @@ class AttendanceRepository extends BaseRepository {
     };
   }
 
-  async listAll(employeeId = null, periodStart = null, periodEnd = null) {
+  async listAll(employeeId = null, periodStart = null, periodEnd = null, search = null, status = null) {
     let sql = `SELECT a.*, e.first_name, e.last_name, e.employee_code, e.department 
                FROM attendance a
                JOIN employees e ON e.id = a.employee_id
                WHERE a.deleted_at IS NULL`;
     const params = [];
-    if (employeeId) {
-      params.push(employeeId);
+    if (employeeId && /^[0-9a-fA-F-]{36}$/.test(String(employeeId).trim())) {
+      params.push(String(employeeId).trim());
       sql += ` AND a.employee_id = $${params.length}`;
     }
     if (periodStart) {
@@ -77,6 +77,20 @@ class AttendanceRepository extends BaseRepository {
     if (periodEnd) {
       params.push(periodEnd);
       sql += ` AND a.date <= $${params.length}`;
+    }
+    if (status && status.toLowerCase() !== 'all') {
+      params.push(status.toUpperCase());
+      sql += ` AND UPPER(a.status) = $${params.length}`;
+    }
+    if (search && String(search).trim()) {
+      params.push(`%${String(search).trim().toLowerCase()}%`);
+      sql += ` AND (
+        LOWER(e.first_name) LIKE $${params.length} OR
+        LOWER(e.last_name) LIKE $${params.length} OR
+        LOWER(e.employee_code) LIKE $${params.length} OR
+        LOWER(e.department) LIKE $${params.length} OR
+        LOWER(CONCAT(e.first_name, ' ', e.last_name)) LIKE $${params.length}
+      )`;
     }
     sql += ` ORDER BY a.date DESC LIMIT 200`;
     const result = await this.raw(sql, params);
@@ -107,7 +121,7 @@ class AttendanceRepository extends BaseRepository {
        total_working AS (
          SELECT COUNT(*) AS total FROM working_days WHERE EXTRACT(DOW FROM d) NOT IN (0, 6)
        )
-       SELECT e.id, e.first_name, e.last_name, e.department,
+       SELECT e.id, e.employee_code, e.first_name, e.last_name, e.department,
               COUNT(DISTINCT a.date) AS present_days,
               tw.total AS total_days,
               ROUND(COUNT(DISTINCT a.date)::numeric / GREATEST(tw.total, 1) * 100, 1) AS attendance_pct
@@ -116,7 +130,7 @@ class AttendanceRepository extends BaseRepository {
        LEFT JOIN attendance a ON a.employee_id = e.id 
          AND a.date >= $1 AND a.date <= $2 AND a.deleted_at IS NULL
        WHERE e.status = 'ACTIVE' AND e.deleted_at IS NULL
-       GROUP BY e.id, e.first_name, e.last_name, e.department, tw.total
+       GROUP BY e.id, e.employee_code, e.first_name, e.last_name, e.department, tw.total
        HAVING ROUND(COUNT(DISTINCT a.date)::numeric / GREATEST(tw.total, 1) * 100, 1) < $3
        ORDER BY attendance_pct`,
       [periodStart, periodEnd, threshold]

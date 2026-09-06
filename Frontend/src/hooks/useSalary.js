@@ -8,6 +8,14 @@ export const useSalaryStructures = () => {
   });
 };
 
+export const useSalaryStructure = (structureId) => {
+  return useQuery({
+    queryKey: ['salaryStructure', structureId],
+    queryFn: () => api.getSalaryStructure(structureId),
+    enabled: !!structureId,
+  });
+};
+
 export const useCreateSalaryStructure = () => {
   const queryClient = useQueryClient();
   return useMutation({

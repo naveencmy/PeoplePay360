@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/Button';
 import Select from '@/components/ui/Select';
 import StatusPill from '@/components/ui/StatusPill';
 import { 
-  SlidersHorizontal, Sparkles, AlertCircle, ShieldCheck, Plus, Trash2, RotateCcw, Play 
+  SlidersHorizontal, AlertCircle, ShieldCheck, Plus, Trash2, RotateCcw, Play 
 } from 'lucide-react';
 
 export const SimulatorPage = () => {
@@ -102,14 +102,16 @@ export const SimulatorPage = () => {
       />
 
       {/* Sandbox Isolation Notice */}
-      <div className="bg-accent-blue/10 border border-accent-blue/25 text-accent-blue p-4 rounded-xl text-xs flex items-center justify-between gap-3 shadow-sm">
+      <div className="bg-accent-blue/10 border border-accent-blue/25 text-accent-blue p-4 rounded-xl text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm">
         <div className="flex items-center gap-2.5">
           <ShieldCheck className="w-5 h-5 shrink-0" />
-          <span>
+          <span className="leading-relaxed">
             <strong>Isolated Sandbox Environment:</strong> Modeling calculations are executed strictly against active PostgreSQL employee contracts in memory. No active employee contracts, payrun drafts, or tax ledger entries are altered.
           </span>
         </div>
-        <StatusPill status="Draft" text="Simulation Active" />
+        <div className="shrink-0 self-end sm:self-auto">
+          <StatusPill variant="primary">Sandbox Active</StatusPill>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -237,13 +239,13 @@ export const SimulatorPage = () => {
         {/* Right Output Projections (7 cols) */}
         <div className="lg:col-span-7">
           {!results && !isLoading ? (
-            <Card className="h-full min-h-[460px] flex flex-col items-center justify-center p-8 text-center border-dashed">
-              <div className="w-14 h-14 rounded-2xl bg-accent-blue/10 border border-accent-blue/20 flex items-center justify-center text-accent-blue mb-3">
-                <Sparkles className="w-7 h-7" />
+            <Card className="h-full min-h-[460px] flex flex-col items-center justify-center p-8 text-center bg-surface-2 border border-border-subtle">
+              <div className="w-12 h-12 rounded-xl bg-surface-3 border border-border-subtle flex items-center justify-center text-accent-blue mb-3.5 shadow-sm">
+                <SlidersHorizontal className="w-5 h-5" />
               </div>
-              <h3 className="font-bold text-sm text-text-main">Ready for Modeling</h3>
-              <p className="text-xs text-text-muted max-w-sm mt-1">
-                Configure your formula multipliers and target workforce cohort on the left panel, then click "Run What-If Simulation" to project the financial impact.
+              <h3 className="font-semibold text-sm text-text-main">No Simulation Executed</h3>
+              <p className="text-xs text-text-muted max-w-sm mt-1.5 leading-relaxed">
+                Configure your formula modifiers on the left and select an employee cohort, then click <span className="text-text-main font-medium">Run What-If Simulation</span> to calculate organization-wide compensation impact.
               </p>
             </Card>
           ) : isLoading ? (

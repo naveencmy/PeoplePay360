@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Plus, LayoutGrid, Network, AlertCircle, ShieldAlert, Sparkles, ChevronRight } from 'lucide-react';
-import { useSalaryRules, useValidateGraph } from '@/hooks/useSalary';
+import { useSalaryRules, useValidateGraph, useSalaryStructure, useSalaryStructures } from '@/hooks/useSalary';
 import PageHeader from '@/components/layout/PageHeader';
 import { Button } from '@/components/ui/Button';
 import { StatusPill } from '@/components/ui/StatusPill';
 import { SalaryRuleFormModal } from '@/components/salary/SalaryRuleFormModal';
 import { SalaryRuleGraph } from '@/components/salary/SalaryRuleGraph';
 import EmptyState from '@/components/ui/EmptyState';
+import useAuthStore from '@/store/authStore';
 
 export const SalaryRulesPage = () => {
   const { structureId } = useParams();
@@ -18,6 +19,12 @@ export const SalaryRulesPage = () => {
 
   const { data: rules = [], isLoading } = useSalaryRules(structureId);
   const { data: graphValidation } = useValidateGraph(structureId);
+  const { data: structure } = useSalaryStructure(structureId);
+  const { data: structures = [] } = useSalaryStructures();
+
+  const structureList = Array.isArray(structures) ? structures : (structures?.data || []);
+  const currentStructure = structure || structureList.find(s => s.id === structureId);
+  const structureName = currentStructure?.name || 'Salary Structure';
 
   const hasCircularDependency = graphValidation?.hasCycle;
 
@@ -37,15 +44,19 @@ export const SalaryRulesPage = () => {
     }
   };
 
+  const user = useAuthStore(s => s.user);
+  const role = (user?.role || '').toUpperCase();
+  const canManage = role === 'ADMIN' || role === 'HR';
+
   return (
     <div className="space-y-6 pb-12 animate-fade-in flex flex-col h-full">
       <PageHeader 
-        title={`Salary Engine Rules · Structure #${structureId}`} 
+        title={structureName} 
         subtitle="Ordered execution rules, algebraic component formulas, and dependency graph"
         breadcrumbs={[
           { label: 'Payroll', to: '/payruns' },
           { label: 'Salary Structures', to: '/salary-structures' },
-          { label: `Structure #${structureId}` }
+          { label: structureName }
         ]}
         actions={
           <div className="flex items-center gap-3">
@@ -81,15 +92,17 @@ export const SalaryRulesPage = () => {
               </button>
             </div>
 
-            <Button 
-              onClick={() => { setSelectedRule(null); setIsModalOpen(true); }} 
-              variant="primary" 
-              size="sm"
-              className="gap-1.5 shadow-sm"
-            >
-              <Plus className="w-4 h-4" />
-              <span>New Rule</span>
-            </Button>
+            {canManage && (
+              <Button 
+                onClick={() => { setSelectedRule(null); setIsModalOpen(true); }} 
+                variant="primary" 
+                size="sm"
+                className="gap-1.5 shadow-sm"
+              >
+                <Plus className="w-4 h-4" />
+                <span>New Rule</span>
+              </Button>
+            )}
           </div>
         }
       />
@@ -119,8 +132,8 @@ export const SalaryRulesPage = () => {
             icon={Sparkles}
             title="No rules configured"
             description="Add calculation rules (Basic, HRA, PF, Tax, Net) to build your salary formula."
-            actionLabel="Add First Rule"
-            onAction={() => { setSelectedRule(null); setIsModalOpen(true); }}
+            actionLabel={canManage ? "Add First Rule" : undefined}
+            onAction={canManage ? () => { setSelectedRule(null); setIsModalOpen(true); } : undefined}
           />
         ) : view === 'table' ? (
           <div className="overflow-x-auto">
@@ -164,12 +177,16 @@ export const SalaryRulesPage = () => {
                       </span>
                     </td>
                     <td className="py-3.5 px-4 text-right">
-                      <button 
-                        className="text-xs text-accent-blue font-semibold hover:underline"
-                        onClick={() => handleEdit(rule)}
-                      >
-                        Edit Rule
-                      </button>
+                      {canManage ? (
+                        <button 
+                          className="text-xs text-accent-blue font-semibold hover:underline"
+                          onClick={() => handleEdit(rule)}
+                        >
+                          Edit Rule
+                        </button>
+                      ) : (
+                        <span className="text-text-muted font-mono text-[11px]">Read-only</span>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -177,7 +194,7 @@ export const SalaryRulesPage = () => {
             </table>
           </div>
         ) : (
-          <SalaryRuleGraph structureId={structureId} rules={rules} onNodeClick={handleEdit} />
+          <SalaryRuleGraph structureId={structureId} rules={rules} onNodeClick={canManage ? handleEdit : undefined} />
         )}
       </div>
 

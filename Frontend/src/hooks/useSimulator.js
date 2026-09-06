@@ -9,6 +9,6 @@ export const useCreateSimulation = () => {
 
 export const useRunSimulation = () => {
   return useMutation({
-    mutationFn: ({ id, overrides }) => api.runSimulation(id, overrides),
+    mutationFn: (params) => api.runSimulation(params),
   });
 };

@@ -32,7 +32,7 @@ export default function LoginPage() {
 
   // Load remembered email on mount
   useEffect(() => {
-    const savedEmail = localStorage.getItem('core.kernelraise@gmail.com');
+    const savedEmail = localStorage.getItem('peoplepay_remember_email');
     if (savedEmail) {
       setEmail(savedEmail);
       setRememberMe(true);
@@ -70,17 +70,13 @@ export default function LoginPage() {
     try {
       // Live backend authentication
       const { user, token } = await apiLogin(email.trim(), password);
-      let mappedRole = 'employee';
-      if (user.role === 'ADMIN' || user.role === 'SUPER_ADMIN') mappedRole = 'admin';
-      else if (user.role === 'HR' || user.role === 'HR_ADMIN') mappedRole = 'hr_manager';
-      else if (user.role === 'MANAGER' || user.role === 'PAYROLL_OFFICER') mappedRole = 'hr_payroll_manager';
-      else if (user.role === 'PAYROLL_USER') mappedRole = 'hr_payroll_user';
+      const role = (user.role || 'EMPLOYEE').toUpperCase();
 
       const userObj = {
         id: user.id,
         name: `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.name || email.split('@')[0],
         email: user.email,
-        role: mappedRole,
+        role: role,
         employeeId: user.employee_id || null,
         token: token,
       };
@@ -99,7 +95,7 @@ export default function LoginPage() {
       const success = await login(userObj);
 
       if (success) {
-        if (userObj.role === 'employee') {
+        if (role === 'EMPLOYEE') {
           navigate('/my-space');
         } else {
           navigate('/dashboard');
@@ -326,6 +322,36 @@ export default function LoginPage() {
                       <span>Sign in</span>
                     )}
                   </button>
+                </div>
+
+                {/* Quick Demo Accounts */}
+                <div className="pt-3 border-t border-slate-100 dark:border-slate-800/80">
+                  <p className="text-[11px] font-medium text-slate-400 dark:text-slate-500 mb-2 text-left">
+                    Demo credentials (click to autofill):
+                  </p>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {[
+                      { role: 'Super Admin', email: 'admin@company.com' },
+                      { role: 'HR Manager', email: 'hrmanager@company.com' },
+                      { role: 'Payroll Officer', email: 'payroll@company.com' },
+                      { role: 'Employee', email: 'employee@company.com' },
+                    ].map((demo) => (
+                      <button
+                        key={demo.email}
+                        type="button"
+                        onClick={() => {
+                          setEmail(demo.email);
+                          setPassword('demo123');
+                          setFieldErrors({});
+                          setErrorMessage('');
+                        }}
+                        className="text-left px-2.5 py-1.5 rounded-lg text-[11px] bg-slate-50 hover:bg-blue-50/70 dark:bg-slate-800/60 dark:hover:bg-blue-950/40 border border-slate-200/80 dark:border-slate-700/60 hover:border-blue-300 dark:hover:border-blue-700/60 transition-colors"
+                      >
+                        <span className="font-semibold text-slate-800 dark:text-slate-200 block truncate">{demo.role}</span>
+                        <span className="text-[10px] text-slate-400 dark:text-slate-500 truncate block">{demo.email}</span>
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </form>
             </>

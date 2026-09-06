@@ -14,16 +14,16 @@ export const Button = ({
   ...props
 }) => {
   const isBusy = loading || isLoading;
-  const baseStyles = 'inline-flex items-center justify-center font-medium rounded-input transition-all duration-150 active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-accent-blue/30 disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100 select-none';
+  const baseStyles = 'inline-flex items-center justify-center font-medium rounded-xl transition-all duration-200 ease-out active:scale-[0.97] focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-blue/40 focus-visible:ring-offset-1 focus-visible:ring-offset-surface-1 disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100 select-none';
   
   const variants = {
-    primary: 'bg-accent-blue text-white hover:bg-accent-blue-hover shadow-sm hover:shadow-glow border border-accent-blue',
-    secondary: 'bg-surface-3 text-text-main hover:bg-surface-2 border border-border-medium shadow-card',
-    outline: 'bg-transparent text-text-main hover:bg-surface-3 border border-border-medium hover:border-border-highlight',
-    ghost: 'bg-transparent text-text-secondary hover:text-text-main hover:bg-surface-3 border border-transparent',
-    danger: 'bg-accent-rose text-white hover:bg-rose-600 border border-accent-rose shadow-sm',
-    success: 'bg-accent-emerald text-white hover:bg-emerald-600 border border-accent-emerald shadow-sm',
-    icon: 'p-2 text-text-secondary hover:text-text-main hover:bg-surface-3 rounded-lg border border-transparent',
+    primary: 'bg-accent-blue text-white hover:bg-accent-blue-hover shadow-sm hover:shadow-glow border border-accent-blue/80 hover:border-accent-blue',
+    secondary: 'bg-surface-3 text-text-main hover:bg-surface-2 border border-border-medium shadow-card hover:shadow-card-hover',
+    outline: 'bg-transparent text-text-main hover:bg-surface-3/60 border border-border-medium hover:border-border-highlight',
+    ghost: 'bg-transparent text-text-secondary hover:text-text-main hover:bg-surface-3/60 border border-transparent',
+    danger: 'bg-accent-rose text-white hover:brightness-110 border border-accent-rose/80 shadow-sm hover:shadow-[0_4px_16px_rgba(244,63,94,0.25)]',
+    success: 'bg-accent-emerald text-white hover:brightness-110 border border-accent-emerald/80 shadow-sm hover:shadow-[0_4px_16px_rgba(16,185,129,0.25)]',
+    icon: 'p-2 text-text-secondary hover:text-text-main hover:bg-surface-3/60 rounded-xl border border-transparent hover:border-border-subtle',
   };
 
   const sizes = {

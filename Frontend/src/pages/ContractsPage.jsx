@@ -12,8 +12,13 @@ import EmptyState from '@/components/ui/EmptyState';
 import MoneyDisplay from '@/components/ui/MoneyDisplay';
 import { useContracts } from '@/hooks/useContracts';
 import ContractFormModal from '@/components/contract/ContractFormModal';
+import useAuthStore from '@/store/authStore';
 
 export default function ContractsPage() {
+  const user = useAuthStore(s => s.user);
+  const role = (user?.role || '').toUpperCase();
+  const canManage = role === 'ADMIN' || role === 'HR';
+
   const [searchParams, setSearchParams] = useSearchParams();
   const employeeId = searchParams.get('employee_id');
   
@@ -23,15 +28,43 @@ export default function ContractsPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedContract, setSelectedContract] = useState(null);
 
-  const { data: contracts = [], isLoading, isError } = useContracts({ 
-    search, 
-    status: activeOnly ? 'Active' : status, 
-    employeeId 
+  const { data: rawContracts = [], isLoading, isError } = useContracts({ 
+    search: search.trim() || undefined, 
+    status: activeOnly ? 'ACTIVE' : (status ? status.toUpperCase() : undefined), 
+    employeeId: employeeId || undefined
   });
 
-  const activeCount = contracts.filter(c => (c.status || '').toLowerCase() === 'active').length;
-  const totalWageSum = contracts
-    .filter(c => (c.status || '').toLowerCase() === 'active')
+  const contracts = React.useMemo(() => {
+    return Array.isArray(rawContracts) ? rawContracts : (rawContracts?.data || []);
+  }, [rawContracts]);
+
+  const filteredContracts = React.useMemo(() => {
+    return contracts.filter(c => {
+      const q = (search || '').trim().toLowerCase();
+      if (q) {
+        const ref = (c.reference || c.name || '').toLowerCase();
+        const emp = (c.employeeName || `${c.first_name || ''} ${c.last_name || ''}`).toLowerCase();
+        const dept = (c.department || '').toLowerCase();
+        const job = (c.jobTitle || c.job_title || '').toLowerCase();
+        const struct = (c.salaryStructure || c.structure_name || '').toLowerCase();
+        const code = (c.employee_code || '').toLowerCase();
+        const match = ref.includes(q) || emp.includes(q) || dept.includes(q) || job.includes(q) || struct.includes(q) || code.includes(q);
+        if (!match) return false;
+      }
+
+      const targetStatus = activeOnly ? 'active' : (status ? status.toLowerCase() : '');
+      if (targetStatus && targetStatus !== 'all') {
+        const cStatus = (c.status || c.state || '').toLowerCase();
+        if (cStatus !== targetStatus) return false;
+      }
+
+      return true;
+    });
+  }, [contracts, search, status, activeOnly]);
+
+  const activeCount = filteredContracts.filter(c => (c.status || c.state || '').toLowerCase() === 'active').length;
+  const totalWageSum = filteredContracts
+    .filter(c => (c.status || c.state || '').toLowerCase() === 'active')
     .reduce((sum, c) => sum + (Number(c.wage) || 0), 0);
 
   const columns = [
@@ -110,21 +143,23 @@ export default function ContractsPage() {
     <div className="space-y-6 pb-12 animate-fade-in">
       <PageHeader 
         title="Employment Contracts" 
-        subtitle="Manage formal compensation agreements, salary structures, and contractual timelines"
+        subtitle="Master terms, gross compensation scales, and assigned salary calculation structures"
         breadcrumbs={[
           { label: 'Employees', to: '/employees' },
           { label: 'Contracts' }
         ]}
         actions={
-          <Button 
-            onClick={handleNew} 
-            variant="primary" 
-            size="sm"
-            className="gap-2 shadow-sm"
-          >
-            <Plus size={16} />
-            <span>New Contract</span>
-          </Button>
+          canManage && (
+            <Button 
+              onClick={handleNew} 
+              variant="primary" 
+              size="sm"
+              className="gap-2 shadow-sm"
+            >
+              <Plus size={16} />
+              <span>New Contract</span>
+            </Button>
+          )
         }
       />
 
@@ -158,7 +193,7 @@ export default function ContractsPage() {
           </div>
           <div>
             <div className="text-[11px] font-semibold uppercase tracking-wider text-text-muted">Total Catalog</div>
-            <div className="text-xl font-bold font-mono text-text-main">{contracts.length}</div>
+            <div className="text-xl font-bold font-mono text-text-main">{filteredContracts.length}</div>
           </div>
         </Card>
       </div>
@@ -184,7 +219,7 @@ export default function ContractsPage() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" size={16} />
             <Input 
               className="pl-9 bg-surface-3 border-border-subtle text-xs h-9"
-              placeholder="Search reference or employee..." 
+              placeholder="Search reference, employee, title..." 
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
@@ -223,18 +258,18 @@ export default function ContractsPage() {
           </div>
         ) : isError ? (
           <div className="p-8 text-center text-accent-rose">Failed to load contracts.</div>
-        ) : contracts?.length === 0 ? (
+        ) : filteredContracts.length === 0 ? (
           <EmptyState 
             icon={FileText}
             title="No contracts found"
             description={search ? `No contracts match "${search}".` : "No contracts registered under the current filter."}
-            actionLabel="Create New Contract"
-            onAction={handleNew}
+            actionLabel={canManage ? "Create New Contract" : undefined}
+            onAction={canManage ? handleNew : undefined}
           />
         ) : (
           <Table 
             columns={columns} 
-            data={contracts} 
+            data={filteredContracts} 
             onRowClick={handleRowClick}
           />
         )}

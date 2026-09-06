@@ -8,8 +8,8 @@ const { employeeIdParamSchema } = require('../../models/employee.model');
 const router = Router();
 router.use(authenticate);
 
-router.get('/', ctrl.listContracts);
-router.get('/expiring', ctrl.getExpiringSoon);
+router.get('/', authorize('ADMIN', 'HR', 'AUDITOR'), ctrl.listContracts);
+router.get('/expiring', authorize('ADMIN', 'HR', 'AUDITOR'), ctrl.getExpiringSoon);
 router.get('/employee/:id', validate({ params: employeeIdParamSchema }), ctrl.getEmployeeContracts);
 router.get('/employee/:id/active', validate({ params: employeeIdParamSchema }), ctrl.getActiveContract);
 

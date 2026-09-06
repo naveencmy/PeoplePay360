@@ -9,17 +9,16 @@ const router = Router();
 const heavyLimiter = createHeavyLimiter();
 
 router.use(authenticate);
-router.use(authorize('ADMIN', 'HR'));
 
-router.get('/', validate({ query: payrunQuerySchema }), ctrl.listPayruns);
-router.get('/:id', validate({ params: payrunIdParamSchema }), ctrl.getPayrun);
-router.post('/', validate({ body: createPayrunSchema }), ctrl.createPayrun);
-router.delete('/:id', validate({ params: payrunIdParamSchema }), ctrl.deletePayrun);
+router.get('/', authorize('ADMIN', 'HR', 'AUDITOR'), validate({ query: payrunQuerySchema }), ctrl.listPayruns);
+router.get('/:id', authorize('ADMIN', 'HR', 'AUDITOR'), validate({ params: payrunIdParamSchema }), ctrl.getPayrun);
+router.post('/', authorize('ADMIN', 'HR'), validate({ body: createPayrunSchema }), ctrl.createPayrun);
+router.delete('/:id', authorize('ADMIN', 'HR'), validate({ params: payrunIdParamSchema }), ctrl.deletePayrun);
 
 // State transitions — rate limited for compute-heavy operations
-router.post('/:id/compute', heavyLimiter, validate({ params: payrunIdParamSchema }), ctrl.computePayrun);
-router.put('/:id/validate', validate({ params: payrunIdParamSchema }), ctrl.validatePayrun);
-router.put('/:id/mark-paid', validate({ params: payrunIdParamSchema }), ctrl.markPaid);
-router.put('/:id/archive', validate({ params: payrunIdParamSchema }), ctrl.archivePayrun);
+router.post('/:id/compute', authorize('ADMIN', 'HR'), heavyLimiter, validate({ params: payrunIdParamSchema }), ctrl.computePayrun);
+router.put('/:id/validate', authorize('ADMIN', 'HR'), validate({ params: payrunIdParamSchema }), ctrl.validatePayrun);
+router.put('/:id/mark-paid', authorize('ADMIN', 'HR'), validate({ params: payrunIdParamSchema }), ctrl.markPaid);
+router.put('/:id/archive', authorize('ADMIN', 'HR'), validate({ params: payrunIdParamSchema }), ctrl.archivePayrun);
 
 module.exports = router;

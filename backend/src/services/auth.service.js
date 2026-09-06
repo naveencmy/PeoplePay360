@@ -166,6 +166,23 @@ async function listUsers() {
   return result.rows.map(sanitizeUser);
 }
 
+async function updateUser(userId, data) {
+  const user = await userRepo.findById(userId);
+  if (!user) {
+    throw AppError.notFound('User');
+  }
+
+  const updates = {};
+  if (data.first_name !== undefined) updates.first_name = data.first_name;
+  if (data.last_name !== undefined) updates.last_name = data.last_name;
+  if (data.role !== undefined) updates.role = data.role.toUpperCase();
+  if (data.is_active !== undefined) updates.is_active = Boolean(data.is_active);
+  if (data.employee_id !== undefined) updates.employee_id = data.employee_id || null;
+
+  const updated = await userRepo.update(userId, updates);
+  return sanitizeUser(updated);
+}
+
 module.exports = {
   register,
   login,
@@ -174,4 +191,5 @@ module.exports = {
   getProfile,
   logout,
   listUsers,
+  updateUser,
 };

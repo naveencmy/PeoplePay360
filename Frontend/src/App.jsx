@@ -35,7 +35,8 @@ function LoadingFallback() {
 
 function HomeRedirect() {
   const user = useAuthStore(s => s.user);
-  if (user?.role === 'employee') return <Navigate to="/my-space" replace />;
+  const role = (user?.role || '').toUpperCase();
+  if (role === 'EMPLOYEE') return <Navigate to="/my-space" replace />;
   return <Navigate to="/dashboard" replace />;
 }
 
@@ -47,25 +48,25 @@ export default function App() {
         <Route path="/" element={<HomeRedirect />} />
 
         <Route element={<ProtectedRoute><AppShell /></ProtectedRoute>}>
-          <Route path="/dashboard" element={<DashboardPage />} />
-          <Route path="/employees" element={<EmployeesPage />} />
-          <Route path="/employees/:id" element={<EmployeeDetailPage />} />
-          <Route path="/contracts" element={<ContractsPage />} />
-          <Route path="/schedules" element={<SchedulesPage />} />
-          <Route path="/attendance" element={<AttendancePage />} />
-          <Route path="/time-off" element={<TimeOffPage />} />
-          <Route path="/time-off/allocations" element={<TimeOffPage initialTab="allocations" />} />
-          <Route path="/time-off/types" element={<TimeOffPage initialTab="types" />} />
-          <Route path="/salary-structures" element={<SalaryStructuresPage />} />
-          <Route path="/salary-rules/:structureId" element={<SalaryRulesPage />} />
-          <Route path="/payruns" element={<PayrunsPage />} />
-          <Route path="/payruns/:id" element={<PayrunDetailPage />} />
-          <Route path="/payslips" element={<PayslipsPage />} />
-          <Route path="/payslips/:id" element={<PayslipDetailPage />} />
-          <Route path="/simulator" element={<SimulatorPage />} />
-          <Route path="/intelligence" element={<PayrollIntelligencePage />} />
-          <Route path="/admin/users" element={<AdminUsersPage />} />
-          <Route path="/my-space" element={<MySpacePage />} />
+          <Route path="/dashboard" element={<ProtectedRoute allowedRoles={['ADMIN', 'HR', 'MANAGER', 'AUDITOR']}><DashboardPage /></ProtectedRoute>} />
+          <Route path="/employees" element={<ProtectedRoute allowedRoles={['ADMIN', 'HR', 'MANAGER', 'AUDITOR']}><EmployeesPage /></ProtectedRoute>} />
+          <Route path="/employees/:id" element={<ProtectedRoute allowedRoles={['ADMIN', 'HR', 'MANAGER', 'AUDITOR', 'EMPLOYEE']}><EmployeeDetailPage /></ProtectedRoute>} />
+          <Route path="/contracts" element={<ProtectedRoute allowedRoles={['ADMIN', 'HR', 'AUDITOR']}><ContractsPage /></ProtectedRoute>} />
+          <Route path="/schedules" element={<ProtectedRoute allowedRoles={['ADMIN', 'HR', 'MANAGER', 'AUDITOR']}><SchedulesPage /></ProtectedRoute>} />
+          <Route path="/attendance" element={<ProtectedRoute allowedRoles={['ADMIN', 'HR', 'MANAGER', 'AUDITOR', 'EMPLOYEE']}><AttendancePage /></ProtectedRoute>} />
+          <Route path="/time-off" element={<ProtectedRoute allowedRoles={['ADMIN', 'HR', 'MANAGER', 'AUDITOR', 'EMPLOYEE']}><TimeOffPage /></ProtectedRoute>} />
+          <Route path="/time-off/allocations" element={<ProtectedRoute allowedRoles={['ADMIN', 'HR', 'MANAGER', 'AUDITOR']}><TimeOffPage initialTab="allocations" /></ProtectedRoute>} />
+          <Route path="/time-off/types" element={<ProtectedRoute allowedRoles={['ADMIN', 'HR', 'MANAGER', 'AUDITOR']}><TimeOffPage initialTab="types" /></ProtectedRoute>} />
+          <Route path="/salary-structures" element={<ProtectedRoute allowedRoles={['ADMIN', 'HR', 'AUDITOR']}><SalaryStructuresPage /></ProtectedRoute>} />
+          <Route path="/salary-rules/:structureId" element={<ProtectedRoute allowedRoles={['ADMIN', 'HR', 'AUDITOR']}><SalaryRulesPage /></ProtectedRoute>} />
+          <Route path="/payruns" element={<ProtectedRoute allowedRoles={['ADMIN', 'HR', 'AUDITOR']}><PayrunsPage /></ProtectedRoute>} />
+          <Route path="/payruns/:id" element={<ProtectedRoute allowedRoles={['ADMIN', 'HR', 'AUDITOR']}><PayrunDetailPage /></ProtectedRoute>} />
+          <Route path="/payslips" element={<ProtectedRoute allowedRoles={['ADMIN', 'HR', 'MANAGER', 'AUDITOR', 'EMPLOYEE']}><PayslipsPage /></ProtectedRoute>} />
+          <Route path="/payslips/:id" element={<ProtectedRoute allowedRoles={['ADMIN', 'HR', 'MANAGER', 'AUDITOR', 'EMPLOYEE']}><PayslipDetailPage /></ProtectedRoute>} />
+          <Route path="/simulator" element={<ProtectedRoute allowedRoles={['ADMIN', 'HR', 'AUDITOR']}><SimulatorPage /></ProtectedRoute>} />
+          <Route path="/intelligence" element={<ProtectedRoute allowedRoles={['ADMIN', 'HR', 'AUDITOR']}><PayrollIntelligencePage /></ProtectedRoute>} />
+          <Route path="/admin/users" element={<ProtectedRoute allowedRoles={['ADMIN', 'HR']}><AdminUsersPage /></ProtectedRoute>} />
+          <Route path="/my-space" element={<ProtectedRoute allowedRoles={['ADMIN', 'HR', 'MANAGER', 'AUDITOR', 'EMPLOYEE']}><MySpacePage /></ProtectedRoute>} />
         </Route>
 
         <Route path="*" element={<NotFound />} />

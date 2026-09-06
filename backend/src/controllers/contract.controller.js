@@ -17,12 +17,36 @@ async function updateContract(req, res) {
   sendSuccess(res, contract, 'Contract updated');
 }
 
+const userRepo = require('../repositories/user.repository');
+const { AppError } = require('../middleware/error.middleware');
+
+async function getAuthEmployeeId(req) {
+  if (req.user?.employeeId) return req.user.employeeId;
+  if (req.user?.userId) {
+    const user = await userRepo.findById(req.user.userId);
+    if (user?.employee_id) return user.employee_id;
+  }
+  return null;
+}
+
 async function getEmployeeContracts(req, res) {
+  if (req.user.role === 'EMPLOYEE') {
+    const userEmpId = await getAuthEmployeeId(req);
+    if (!userEmpId || req.params.id !== userEmpId) {
+      throw AppError.forbidden('You are not authorized to view other employees contracts');
+    }
+  }
   const contracts = await contractService.getEmployeeContracts(req.params.id);
   sendSuccess(res, contracts);
 }
 
 async function getActiveContract(req, res) {
+  if (req.user.role === 'EMPLOYEE') {
+    const userEmpId = await getAuthEmployeeId(req);
+    if (!userEmpId || req.params.id !== userEmpId) {
+      throw AppError.forbidden('You are not authorized to view other employees contracts');
+    }
+  }
   const contract = await contractService.getActiveContract(req.params.id, req.query.date);
   sendSuccess(res, contract);
 }

@@ -27,8 +27,14 @@ async function generatePayslipPDF(payslipData) {
         ? JSON.parse(payslipData.lines)
         : (payslipData.lines || []);
 
-      const earnings = lines.filter((l) => l.category !== 'DEDUCTION');
-      const deductions = lines.filter((l) => l.category === 'DEDUCTION');
+      const formatPDFCurrency = (amount) => formatCurrency(amount, 'Rs. ');
+
+      const earnings = lines.filter(
+        (l) => !['DEDUCTION', 'GROSS', 'NET'].includes(l.category) && !['GROSS', 'NET'].includes(l.code)
+      );
+      const deductions = lines.filter(
+        (l) => l.category === 'DEDUCTION' && !['GROSS', 'NET'].includes(l.code)
+      );
 
       // ─── HEADER ─────────────────────────────────────────────
       doc.rect(50, 50, 495, 60).fill('#4A56E2');
@@ -49,37 +55,45 @@ async function generatePayslipPDF(payslipData) {
         .text(`Pay Period: ${period}`, 60, 126, { width: 475, align: 'center' });
 
       // ─── EMPLOYEE DETAILS ──────────────────────────────────
-      let y = 160;
-      doc.fillColor('#333333').fontSize(10).font('Helvetica');
+      let y = 158;
+      doc.fillColor('#333333').fontSize(9);
 
       const leftCol = [
-        ['Employee Name', `${payslipData.first_name || ''} ${payslipData.last_name || ''}`],
+        ['Employee Name', `${payslipData.first_name || ''} ${payslipData.last_name || ''}`.trim() || 'N/A'],
         ['Employee ID', payslipData.employee_code || 'N/A'],
         ['Department', payslipData.department || 'N/A'],
         ['Designation', payslipData.designation || 'N/A'],
       ];
 
       const rightCol = [
-        ['Pay Period', `${formatDisplayDate(payslipData.period_start)} — ${formatDisplayDate(payslipData.period_end)}`],
+        ['Pay Period', `${formatDisplayDate(payslipData.period_start)} to ${formatDisplayDate(payslipData.period_end)}`],
         ['Worked Days', `${payslipData.worked_days || 0} / ${payslipData.total_days || 0}`],
         ['Bank Account', payslipData.bank_account_number ? `XXXX${payslipData.bank_account_number.slice(-4)}` : 'N/A'],
         ['IFSC', payslipData.bank_ifsc || 'N/A'],
       ];
 
       for (let i = 0; i < leftCol.length; i++) {
-        doc.font('Helvetica-Bold').text(leftCol[i][0] + ':', 60, y, { width: 120 });
-        doc.font('Helvetica').text(leftCol[i][1], 180, y, { width: 150 });
+        const leftVal = String(leftCol[i][1] || 'N/A');
+        const rightVal = String(rightCol[i][1] || 'N/A');
 
-        doc.font('Helvetica-Bold').text(rightCol[i][0] + ':', 340, y, { width: 100 });
-        doc.font('Helvetica').text(rightCol[i][1], 440, y, { width: 105 });
+        doc.font('Helvetica-Bold').text(leftCol[i][0] + ':', 60, y, { width: 95 });
+        doc.font('Helvetica').text(leftVal, 158, y, { width: 140 });
 
-        y += 18;
+        doc.font('Helvetica-Bold').text(rightCol[i][0] + ':', 305, y, { width: 85 });
+        doc.font('Helvetica').text(rightVal, 392, y, { width: 153 });
+
+        const rowHeight = Math.max(
+          doc.heightOfString(leftVal, { width: 140 }),
+          doc.heightOfString(rightVal, { width: 153 }),
+          14
+        );
+        y += rowHeight + 4;
       }
 
       // ─── DIVIDER ───────────────────────────────────────────
-      y += 10;
+      y += 6;
       doc.moveTo(50, y).lineTo(545, y).stroke('#CCCCCC');
-      y += 15;
+      y += 14;
 
       // ─── EARNINGS & DEDUCTIONS TABLE ───────────────────────
       // Table headers
@@ -117,12 +131,12 @@ async function generatePayslipPDF(payslipData) {
 
         if (earnings[i]) {
           doc.text(earnings[i].name, 60, y, { width: 140 });
-          doc.text(formatCurrency(earnings[i].amount), 200, y, { width: 80, align: 'right' });
+          doc.text(formatPDFCurrency(earnings[i].amount), 200, y, { width: 80, align: 'right' });
         }
 
         if (deductions[i]) {
           doc.text(deductions[i].name, 310, y, { width: 140 });
-          doc.text(formatCurrency(deductions[i].amount), 455, y, { width: 80, align: 'right' });
+          doc.text(formatPDFCurrency(deductions[i].amount), 455, y, { width: 80, align: 'right' });
         }
 
         y += 18;
@@ -135,9 +149,9 @@ async function generatePayslipPDF(payslipData) {
 
       doc.fontSize(10).font('Helvetica-Bold').fillColor('#333333');
       doc.text('Gross Earnings:', 60, y);
-      doc.text(formatCurrency(payslipData.gross), 200, y, { width: 80, align: 'right' });
+      doc.text(formatPDFCurrency(payslipData.gross), 200, y, { width: 80, align: 'right' });
       doc.text('Total Deductions:', 310, y);
-      doc.text(formatCurrency(payslipData.total_deductions || 0), 455, y, { width: 80, align: 'right' });
+      doc.text(formatPDFCurrency(payslipData.total_deductions || 0), 455, y, { width: 80, align: 'right' });
 
       y += 25;
 
@@ -147,7 +161,7 @@ async function generatePayslipPDF(payslipData) {
         .fontSize(14)
         .font('Helvetica-Bold')
         .text('NET PAY', 60, y + 9);
-      doc.text(formatCurrency(payslipData.net), 300, y + 9, { width: 235, align: 'right' });
+      doc.text(formatPDFCurrency(payslipData.net), 300, y + 9, { width: 235, align: 'right' });
 
       y += 45;
 

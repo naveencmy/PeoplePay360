@@ -13,7 +13,7 @@ const createStructureSchema = z.object({
 const updateStructureSchema = createStructureSchema.partial();
 
 const createRuleSchema = z.object({
-  structure_id: z.string().uuid('Invalid structure ID'),
+  structure_id: z.string().uuid('Invalid structure ID').optional(),
   name: z.string().min(1, 'Rule name is required').max(200),
   code: z.string().min(1, 'Rule code is required').max(50)
     .regex(/^[A-Z][A-Z0-9_]*$/, 'Code must be uppercase alphanumeric with underscores, starting with a letter'),
@@ -25,8 +25,6 @@ const createRuleSchema = z.object({
   formula: z.string().max(500).optional().nullable(),
   condition: z.string().max(500).optional().nullable(),
   active: z.boolean().default(true),
-  appears_on_payslip: z.boolean().default(true),
-  note: z.string().max(500).optional(),
 });
 
 const updateRuleSchema = createRuleSchema.partial().omit({ structure_id: true });

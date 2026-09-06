@@ -17,12 +17,12 @@ export const KPICard = ({
   const isNegative = delta && String(delta).startsWith('-');
 
   return (
-    <div className={`bg-surface-2 border border-border-subtle hover:border-border-medium rounded-card p-5 flex flex-col justify-between shadow-card hover:shadow-card-hover transition-all duration-150 relative overflow-hidden group ${className}`}>
+    <div className={`bg-surface-2 border border-border-subtle hover:border-border-medium rounded-2xl p-5 flex flex-col justify-between shadow-card hover:shadow-card-hover transition-all duration-200 relative overflow-hidden group ${className}`}>
       {/* Top row: title + icon */}
       <div className="flex items-center justify-between mb-3">
         <span className="text-xs font-semibold uppercase tracking-wider text-text-muted">{title}</span>
         {Icon && (
-          <div className="p-2 rounded-lg bg-surface-3 text-accent-blue border border-border-subtle group-hover:border-accent-blue/30 transition-colors">
+          <div className="p-2 rounded-xl bg-accent-blue/10 dark:bg-accent-blue/15 text-accent-blue border border-accent-blue/20 group-hover:border-accent-blue/30 group-hover:shadow-[0_0_12px_rgba(79,124,255,0.12)] transition-all duration-200">
             <Icon className="w-4 h-4" />
           </div>
         )}
@@ -31,7 +31,7 @@ export const KPICard = ({
       {/* Main Value */}
       <div className="my-1">
         {loading ? (
-          <div className="h-8 w-32 bg-surface-3 animate-pulse rounded-md"></div>
+          <div className="h-8 w-32 bg-surface-3 animate-pulse rounded-xl"></div>
         ) : (
           <div className="text-2xl sm:text-3xl font-bold font-mono tracking-tight text-text-main tabular-nums">
             {value}
@@ -43,12 +43,12 @@ export const KPICard = ({
       <div className="mt-2 flex items-center justify-between text-xs">
         {delta ? (
           <div className="flex items-center gap-1.5 font-medium">
-            <span className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[11px] font-mono ${
+            <span className={`inline-flex items-center gap-0.5 px-2 py-0.5 rounded-lg text-[11px] font-mono font-semibold ${
               isPositive 
-                ? 'bg-accent-emerald/15 text-accent-emerald' 
+                ? 'bg-accent-emerald/15 text-accent-emerald border border-accent-emerald/20' 
                 : isNegative 
-                  ? 'bg-accent-rose/15 text-accent-rose' 
-                  : 'bg-surface-3 text-text-muted'
+                  ? 'bg-accent-rose/15 text-accent-rose border border-accent-rose/20' 
+                  : 'bg-surface-3 text-text-muted border border-border-subtle'
             }`}>
               {isPositive && <TrendingUp className="w-3 h-3" />}
               {isNegative && <TrendingDown className="w-3 h-3" />}

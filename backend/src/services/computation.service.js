@@ -161,9 +161,14 @@ function topologicalSort(rules) {
  * @param {string} periodEnd - Period end date
  * @returns {Object} Computation context
  */
-function buildContext(employee, contract, attendance, timeoffDays, periodStart, periodEnd) {
+function buildContext(employee, contract, attendance = {}, timeoffDays = 0, periodStart, periodEnd) {
   const totalWorkingDays = getWorkingDays(periodStart, periodEnd);
-  const workedDays = attendance.worked_days || 0;
+  const rawWorked = (attendance && typeof attendance.worked_days === 'number') ? attendance.worked_days : 0;
+  // If biometric attendance was not logged (rawWorked === 0) for a monthly salaried contract,
+  // assume standard period working days unless partial days were explicitly logged.
+  const workedDays = (rawWorked === 0 && (!contract.wage_type || contract.wage_type === 'MONTHLY'))
+    ? totalWorkingDays
+    : rawWorked;
   const effectiveWorkedDays = Math.min(workedDays + (timeoffDays || 0), totalWorkingDays);
 
   return {

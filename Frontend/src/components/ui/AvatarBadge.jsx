@@ -28,14 +28,14 @@ const AvatarBadge = ({ name = 'Unknown User', size = 'md', src }) => {
 
   return (
     <div 
-      className={`relative inline-flex items-center justify-center rounded-full overflow-hidden flex-shrink-0 ${sizeClass}`}
+      className={`relative inline-flex items-center justify-center rounded-full overflow-hidden flex-shrink-0 ring-2 ring-surface-2 ring-offset-0 transition-all duration-150 ${sizeClass}`}
       style={{ backgroundColor: bgColor }}
       title={name}
     >
       {src ? (
         <img src={src} alt={name} className="w-full h-full object-cover" />
       ) : (
-        <span className="font-semibold text-white select-none">
+        <span className="font-semibold text-white select-none drop-shadow-sm">
           {getInitials(name)}
         </span>
       )}

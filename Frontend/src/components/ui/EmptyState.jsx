@@ -12,8 +12,8 @@ export const EmptyState = ({
   className = ''
 }) => {
   return (
-    <div className={`flex flex-col items-center justify-center p-12 text-center h-full w-full bg-surface-2 border border-border-subtle rounded-card shadow-card ${className}`}>
-      <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-surface-3 border border-border-medium mb-3 text-text-muted">
+    <div className={`flex flex-col items-center justify-center p-12 text-center h-full w-full bg-surface-2 border border-border-subtle rounded-2xl shadow-card ${className}`}>
+      <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-accent-blue/10 dark:bg-accent-blue/15 border border-accent-blue/20 mb-4">
         {React.isValidElement(Icon) ? (
           Icon
         ) : Icon ? (
@@ -21,11 +21,11 @@ export const EmptyState = ({
         ) : null}
       </div>
       <h3 className="mt-2 text-base font-bold text-text-main tracking-tight">{title}</h3>
-      <p className="mt-1 text-xs text-text-muted max-w-sm">
+      <p className="mt-1.5 text-sm text-text-muted max-w-sm leading-relaxed">
         {description}
       </p>
       {(action || actionLabel) && (
-        <div className="mt-5">
+        <div className="mt-6">
           {React.isValidElement(action) ? (
             action
           ) : (

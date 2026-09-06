@@ -1,5 +1,5 @@
-import React from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { Download, Mail, ArrowLeft, Printer, ShieldCheck, FileText } from 'lucide-react';
 import { usePayslip, useGeneratePDF } from '@/hooks/usePayslips';
 import { StatusPill } from '@/components/ui/StatusPill';
@@ -8,6 +8,7 @@ import PageHeader from '@/components/layout/PageHeader';
 import EmptyState from '@/components/ui/EmptyState';
 import Logo from '@/components/ui/Logo';
 import toast from 'react-hot-toast';
+import useAuthStore from '@/store/authStore';
 
 function formatINR(val) {
   const num = typeof val === 'number' ? val : parseFloat(val) || 0;
@@ -17,43 +18,17 @@ function formatINR(val) {
 export const PayslipDetailPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
+  const { user, hasRole } = useAuthStore();
+  const role = (user?.role || 'EMPLOYEE').toUpperCase();
+  const isEmployee = role === 'EMPLOYEE';
+  const canManage = hasRole('ADMIN', 'HR');
+
   const { data: payslip, isLoading } = usePayslip(id);
-  const { mutate: generatePDF } = useGeneratePDF();
 
-  const handlePrint = () => {
-    window.print();
-  };
-
-  const handleEmail = () => {
-    toast.success('Payslip copy emailed to employee');
-  };
-
-  if (isLoading) {
-    return (
-      <div className="p-12 text-center text-text-muted flex flex-col items-center justify-center gap-3">
-        <div className="w-6 h-6 border-2 border-accent-blue border-t-transparent rounded-full animate-spin" />
-        <span className="text-sm font-medium">Loading salary statement...</span>
-      </div>
-    );
-  }
-
-  if (!payslip) {
-    return (
-      <div className="p-8">
-        <EmptyState 
-          icon={FileText}
-          title="Salary Statement Not Found"
-          description="The requested payslip record does not exist or has been archived."
-          actionLabel="Back to Payslips"
-          onAction={() => navigate('/payslips')}
-        />
-      </div>
-    );
-  }
-
-  const p = payslip;
+  const p = payslip || {};
   const employeeName = p.employeeName || `${p.first_name || ''} ${p.last_name || ''}`.trim() || 'Employee';
-  const employeeId = p.employeeCode || p.employee_code || p.employeeId || p.employee_id || '—';
+  const employeeId = p.employeeCode || p.employee_code || p.employeeId || p.employee_id || 'EMP';
   const designation = p.designation || p.jobPosition || 'Staff';
   const department = p.department || 'Operations';
   const period = p.periodName || p.payPeriod || (p.period_start && p.period_end ? `${p.period_start} to ${p.period_end}` : 'Current Period');
@@ -72,60 +47,192 @@ export const PayslipDetailPage = () => {
   const uanNumber = p.uan_number || p.uan || '—';
   const status = p.status || 'Paid';
 
+  const totalDays = parseFloat(p.total_days || p.totalDays) || 30;
+  const rawWorked = parseFloat(p.worked_days ?? p.workedDays);
+  const paidDays = (!isNaN(rawWorked) && rawWorked > 0)
+    ? rawWorked
+    : (grossAmount > 0 ? totalDays : 0);
+
+  const handlePrint = () => {
+    window.print();
+  };
+
+  const handleDownloadPDF = async () => {
+    try {
+      toast.loading('Generating official PDF...', { id: 'pdf-dl' });
+      const token = localStorage.getItem('token');
+      const response = await fetch(`/api/payslips/${id}/pdf`, {
+        headers: {
+          Authorization: token ? `Bearer ${token}` : '',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`PDF generation endpoint returned ${response.status}`);
+      }
+
+      const blob = await response.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      const safePeriod = String(period || 'Period').replace(/[^a-zA-Z0-9]/g, '_');
+      const safeName = String(employeeName || 'Staff').replace(/\s+/g, '_');
+      link.download = `Payslip_${employeeId}_${safeName}_${safePeriod}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(blobUrl);
+      toast.success('Payslip PDF downloaded successfully', { id: 'pdf-dl' });
+    } catch (err) {
+      console.warn('Direct PDF download error, triggering print view:', err);
+      toast.dismiss('pdf-dl');
+      window.print();
+    }
+  };
+
+  useEffect(() => {
+    if (location.search.includes('download=pdf') && payslip && !isLoading) {
+      handleDownloadPDF();
+    }
+  }, [location.search, payslip, isLoading]);
+
+  const handleEmail = () => {
+    toast.success('Payslip copy emailed to employee');
+  };
+
+  if (isLoading) {
+    return (
+      <div className="p-12 text-center text-text-muted flex flex-col items-center justify-center gap-3">
+        <div className="w-6 h-6 border-2 border-accent-blue border-t-transparent rounded-full animate-spin" />
+        <span className="text-sm font-medium">Loading salary statement...</span>
+      </div>
+    );
+  }
+
+  // IDOR Protection: Employee can only view their own payslip
+  const payslipEmpId = payslip?.employee_id || payslip?.employeeId;
+  if (isEmployee && payslip && user?.employeeId && payslipEmpId && payslipEmpId !== user.employeeId) {
+    return (
+      <div className="p-8 text-center text-accent-rose bg-surface-2 rounded-xl border border-accent-rose/20 m-6">
+        <div className="text-base font-bold mb-1">Access Forbidden (403)</div>
+        <div className="text-xs text-text-muted">You are only permitted to inspect your own authenticated payslip statements.</div>
+        <Button 
+          variant="outline" 
+          size="sm" 
+          onClick={() => navigate('/my-space')} 
+          className="mt-4"
+        >
+          Return to My Space
+        </Button>
+      </div>
+    );
+  }
+
+  if (!payslip) {
+    return (
+      <div className="p-8">
+        <EmptyState 
+          icon={FileText}
+          title="Salary Statement Not Found"
+          description="The requested payslip record does not exist or has been archived."
+          actionLabel={isEmployee ? "Back to My Space" : "Back to Payslips"}
+          onAction={() => navigate(isEmployee ? '/my-space' : '/payslips')}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6 pb-16 animate-fade-in">
-      <PageHeader 
-        title="Salary Statement" 
-        subtitle="Confidential Monthly Compensation & Tax Withholding Summary"
-        breadcrumbs={[
-          { label: 'Payroll', to: '/payruns' },
-          { label: 'Payslips', to: '/payslips' },
-          { label: `Statement #${id?.slice?.(0, 8) || id}` }
-        ]}
-        actions={
-          <div className="flex items-center gap-2">
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={() => navigate('/payslips')}
-              className="gap-1.5"
-            >
-              <ArrowLeft size={14} />
-              <span>Back</span>
-            </Button>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={handlePrint}
-              className="gap-1.5"
-            >
-              <Printer size={14} />
-              <span>Print</span>
-            </Button>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={() => generatePDF ? generatePDF(id) : handlePrint()}
-              className="gap-1.5"
-            >
-              <Download size={14} />
-              <span>Download PDF</span>
-            </Button>
-            <Button 
-              variant="primary" 
-              size="sm" 
-              onClick={handleEmail}
-              className="gap-1.5 shadow-sm"
-            >
-              <Mail size={14} />
-              <span>Email to Staff</span>
-            </Button>
-          </div>
+      <style>{`
+        @media print {
+          body {
+            background: #fff !important;
+            color: #000 !important;
+          }
+          body * {
+            visibility: hidden;
+          }
+          #payslip-statement, #payslip-statement * {
+            visibility: visible !important;
+          }
+          #payslip-statement {
+            position: absolute !important;
+            left: 0 !important;
+            top: 0 !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            margin: 0 !important;
+            padding: 24px !important;
+            background: #fff !important;
+            color: #111 !important;
+            box-shadow: none !important;
+            border: 1px solid #ddd !important;
+          }
+          header, nav, aside, .no-print, [role="navigation"] {
+            display: none !important;
+          }
         }
-      />
+      `}</style>
+      <div className="print:hidden">
+        <PageHeader 
+          title="Salary Statement" 
+          subtitle="Confidential Monthly Compensation & Tax Withholding Summary"
+          breadcrumbs={[
+            { label: isEmployee ? 'My Space' : 'Payroll', to: isEmployee ? '/my-space' : '/payruns' },
+            { label: isEmployee ? 'My Payslips' : 'Payslips', to: '/payslips' },
+            { label: `Statement #${id?.slice?.(0, 8) || id}` }
+          ]}
+          actions={
+            <div className="flex items-center gap-2">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => navigate(isEmployee ? '/payslips' : '/payslips')}
+                className="gap-1.5"
+              >
+                <ArrowLeft size={14} />
+                <span>Back</span>
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={handlePrint}
+                className="gap-1.5"
+              >
+                <Printer size={14} />
+                <span>Print</span>
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={handleDownloadPDF}
+                className="gap-1.5"
+              >
+                <Download size={14} />
+                <span>Download PDF</span>
+              </Button>
+              {canManage && (
+                <Button 
+                  variant="primary" 
+                  size="sm" 
+                  onClick={handleEmail}
+                  className="gap-1.5 shadow-sm"
+                >
+                  <Mail size={14} />
+                  <span>Email to Staff</span>
+                </Button>
+              )}
+            </div>
+          }
+        />
+      </div>
 
       {/* Formal Printable Document Card */}
-      <div className="bg-surface-2 border border-border-subtle rounded-2xl p-6 sm:p-10 shadow-card max-w-4xl mx-auto space-y-8">
+      <div 
+        id="payslip-statement"
+        className="bg-surface-2 border border-border-subtle rounded-2xl p-6 sm:p-10 shadow-card max-w-4xl mx-auto space-y-8 print:bg-white print:border-none print:shadow-none print:p-0 print:m-0 print:w-full print:max-w-none"
+      >
         {/* Document Letterhead */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-6 border-b border-border-subtle">
           <div className="flex items-center gap-3.5">
@@ -189,7 +296,7 @@ export const PayslipDetailPage = () => {
           </div>
           <div>
             <span className="text-[10px] font-semibold uppercase text-text-muted block">Paid Days / Schedule</span>
-            <span className="font-mono text-text-main mt-0.5 block">{p.worked_days || p.workedDays || 30} / {p.total_days || p.totalDays || 30} days</span>
+            <span className="font-mono text-text-main mt-0.5 block">{paidDays} / {totalDays} days</span>
           </div>
         </div>
 

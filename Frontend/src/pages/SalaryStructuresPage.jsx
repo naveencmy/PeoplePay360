@@ -10,6 +10,7 @@ import Modal from '@/components/ui/Modal';
 import Input from '@/components/ui/Input';
 import EmptyState from '@/components/ui/EmptyState';
 import toast from 'react-hot-toast';
+import useAuthStore from '@/store/authStore';
 
 export const SalaryStructuresPage = () => {
   const navigate = useNavigate();
@@ -37,6 +38,9 @@ export const SalaryStructuresPage = () => {
 
   const totalRulesCount = structures.reduce((acc, s) => acc + (s.rulesCount || 0), 0);
   const totalContractsCount = structures.reduce((acc, s) => acc + (s.contractsCount || 0), 0);
+  const user = useAuthStore(s => s.user);
+  const role = (user?.role || '').toUpperCase();
+  const canManage = role === 'ADMIN' || role === 'HR';
 
   return (
     <div className="space-y-6 pb-12 animate-fade-in">
@@ -48,15 +52,17 @@ export const SalaryStructuresPage = () => {
           { label: 'Salary Structures' }
         ]}
         actions={
-          <Button 
-            onClick={() => setIsModalOpen(true)} 
-            variant="primary" 
-            size="sm"
-            className="gap-2 shadow-sm"
-          >
-            <Plus className="w-4 h-4" />
-            <span>New Structure</span>
-          </Button>
+          canManage && (
+            <Button 
+              onClick={() => setIsModalOpen(true)} 
+              variant="primary" 
+              size="sm"
+              className="gap-2 shadow-sm"
+            >
+              <Plus className="w-4 h-4" />
+              <span>New Structure</span>
+            </Button>
+          )
         }
       />
 
@@ -148,7 +154,7 @@ export const SalaryStructuresPage = () => {
                     </td>
                     <td className="py-3.5 px-4 text-right">
                       <div className="flex items-center justify-end gap-1 text-accent-blue font-medium text-xs group-hover:translate-x-0.5 transition-transform">
-                        <span>Edit Graph</span>
+                        <span>{canManage ? 'Edit Graph' : 'View Graph'}</span>
                         <ChevronRight className="w-3.5 h-3.5" />
                       </div>
                     </td>

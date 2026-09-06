@@ -50,9 +50,9 @@ export default function AttendanceDetailModal({ record, onClose }) {
   return (
     <Modal isOpen={!!record} onClose={onClose} title="Manual Attendance Correction">
       <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="bg-white/5 p-4 rounded-lg mb-4">
-          <p className="text-white font-medium">{record.employeeName}</p>
-          <p className="text-gray-400 text-sm">
+        <div className="bg-slate-50 dark:bg-white/5 border border-slate-200/80 dark:border-white/10 p-4 rounded-xl mb-4">
+          <p className="text-slate-900 dark:text-white font-semibold text-base">{record.employeeName}</p>
+          <p className="text-slate-500 dark:text-slate-400 text-xs mt-0.5">
             {record.date ? (() => {
               try {
                 const d = new Date(record.date);
@@ -64,8 +64,10 @@ export default function AttendanceDetailModal({ record, onClose }) {
           </p>
         </div>
 
-        <div className="space-y-2">
-          <label htmlFor="checkIn">Check In Time</label>
+        <div className="space-y-1.5">
+          <label htmlFor="checkIn" className="block text-xs font-semibold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+            Check In Time
+          </label>
           <Input 
             id="checkIn" 
             type="datetime-local" 
@@ -74,8 +76,10 @@ export default function AttendanceDetailModal({ record, onClose }) {
           />
         </div>
 
-        <div className="space-y-2">
-          <label htmlFor="checkOut">Check Out Time</label>
+        <div className="space-y-1.5">
+          <label htmlFor="checkOut" className="block text-xs font-semibold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+            Check Out Time
+          </label>
           <Input 
             id="checkOut" 
             type="datetime-local" 
@@ -84,19 +88,21 @@ export default function AttendanceDetailModal({ record, onClose }) {
           />
         </div>
 
-        <div className="space-y-2">
-          <label htmlFor="auditNote">Audit Note (Required)</label>
+        <div className="space-y-1.5">
+          <label htmlFor="auditNote" className="block text-xs font-semibold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+            Audit Note (Required)
+          </label>
           <textarea
             id="auditNote"
             value={auditNote}
             onChange={(e) => setAuditNote(e.target.value)}
             required
-            className="w-full bg-[#0B0D10] border border-[rgba(255,255,255,0.08)] rounded-md p-3 text-white focus:outline-none focus:border-[#4F7CFF] min-h-[100px]"
+            className="w-full bg-white dark:bg-[#0B0D10] border border-slate-300 dark:border-slate-800 rounded-xl p-3 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-accent-blue min-h-[100px] placeholder:text-slate-400"
             placeholder="Reason for manual correction..."
           />
         </div>
 
-        <div className="flex justify-end gap-3 pt-4 border-t border-[rgba(255,255,255,0.08)]">
+        <div className="flex justify-end gap-3 pt-4 border-t border-slate-200 dark:border-slate-800">
           <Button type="button" variant="ghost" onClick={onClose}>Cancel</Button>
           <Button type="submit" variant="primary" isLoading={updateMutation.isLoading}>Save Correction</Button>
         </div>

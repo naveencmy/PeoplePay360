@@ -4,10 +4,12 @@ import {
   Play, CheckCircle, Mail, AlertTriangle, ArrowLeft, 
   Users, DollarSign, Wallet, ShieldCheck, Check, Clock, Send 
 } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
 import { 
   usePayrun, useComputePayrun, useValidatePayrun, 
   useMarkPaid, useSendPayslips 
 } from '@/hooks/usePayrun';
+import { usePayslips } from '@/hooks/usePayslips';
 import { useAnomalies } from '@/hooks/useAnomalies';
 import PageHeader from '@/components/layout/PageHeader';
 import { Button } from '@/components/ui/Button';
@@ -15,12 +17,19 @@ import { StatusPill } from '@/components/ui/StatusPill';
 import { Card } from '@/components/ui/Card';
 import MoneyDisplay from '@/components/ui/MoneyDisplay';
 import toast from 'react-hot-toast';
+import useAuthStore from '@/store/authStore';
 
 export const PayrunDetailPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const user = useAuthStore(s => s.user);
+  const role = (user?.role || '').toUpperCase();
+  const canManage = role === 'ADMIN' || role === 'HR';
+
+  const queryClient = useQueryClient();
   const { data: payrun, isLoading, refetch } = usePayrun(id);
-  const { data: anomalies = [] } = useAnomalies(id);
+  const { data: payslipsData, isLoading: isLoadingPayslips, refetch: refetchPayslips } = usePayslips({ payrun_id: id });
+  const { data: anomalies = [], refetch: refetchAnomalies } = useAnomalies(id);
 
   const { mutate: computePayrun, isPending: isComputing } = useComputePayrun();
   const { mutate: validatePayrun, isPending: isValidating } = useValidatePayrun();
@@ -32,8 +41,15 @@ export const PayrunDetailPage = () => {
       onSuccess: () => {
         toast.success('Payrun computed successfully');
         refetch();
+        refetchPayslips?.();
+        refetchAnomalies?.();
+        queryClient.invalidateQueries({ queryKey: ['payslips'] });
+        queryClient.invalidateQueries({ queryKey: ['payruns'] });
+        queryClient.invalidateQueries({ queryKey: ['payrun', id] });
       },
-      onError: () => toast.error('Failed to compute payrun')
+      onError: (err) => {
+        toast.error(err?.response?.data?.message || err?.message || 'Failed to compute payrun');
+      }
     });
   };
 
@@ -80,14 +96,22 @@ export const PayrunDetailPage = () => {
   const steps = ['Draft', 'Computed', 'Validated', 'Paid'];
   const currentStepIndex = steps.indexOf(currentStatus);
 
-  const payslipsList = Array.isArray(payrun?.payslips) ? payrun.payslips : [];
+  const payslipsList = Array.isArray(payslipsData?.data) 
+    ? payslipsData.data 
+    : (Array.isArray(payslipsData) ? payslipsData : (Array.isArray(payrun?.payslips) ? payrun.payslips : []));
   const computedGross = payslipsList.reduce((sum, p) => sum + (parseFloat(p.gross) || 0), 0);
   const computedDeductions = payslipsList.reduce((sum, p) => sum + (parseFloat(p.total_deductions) || 0), 0);
   const computedNet = payslipsList.reduce((sum, p) => sum + (parseFloat(p.net) || 0), 0);
 
-  const totalGrossFormatted = payrun?.totalGross || `₹${computedGross.toLocaleString('en-IN')}`;
-  const totalDeductionsFormatted = payrun?.totalDeductions || `₹${computedDeductions.toLocaleString('en-IN')}`;
-  const totalNetFormatted = payrun?.totalNet || `₹${computedNet.toLocaleString('en-IN')}`;
+  const totalGrossFormatted = computedGross > 0 ? `₹${computedGross.toLocaleString('en-IN')}` : (payrun?.totalGross || '₹0');
+  const totalDeductionsFormatted = computedDeductions > 0 ? `₹${computedDeductions.toLocaleString('en-IN')}` : (payrun?.totalDeductions || '₹0');
+  const totalNetFormatted = computedNet > 0 ? `₹${computedNet.toLocaleString('en-IN')}` : (payrun?.totalNet || '₹0');
+
+  const startDateDisplay = payrun?.periodStart || payrun?.period_start ? String(payrun?.periodStart || payrun?.period_start).slice(0, 10) : '';
+  const endDateDisplay = payrun?.periodEnd || payrun?.period_end ? String(payrun?.periodEnd || payrun?.period_end).slice(0, 10) : '';
+  const dateSubtitle = startDateDisplay && endDateDisplay 
+    ? `Cycle: ${startDateDisplay} to ${endDateDisplay} · Operations Console` 
+    : 'Payroll Operations Console';
 
   if (isLoading) {
     return (
@@ -102,7 +126,7 @@ export const PayrunDetailPage = () => {
     <div className="space-y-6 pb-12 animate-fade-in">
       <PageHeader 
         title={payrun?.periodName || 'Payrun Cycle'} 
-        subtitle={`Cycle: ${payrun?.periodStart || '01-01'} to ${payrun?.periodEnd || '31-01'} · Operations Console`}
+        subtitle={dateSubtitle}
         breadcrumbs={[
           { label: 'Payruns', to: '/payruns' },
           { label: payrun?.periodName || 'Cycle' }
@@ -119,7 +143,7 @@ export const PayrunDetailPage = () => {
               <span>Back</span>
             </Button>
 
-            {currentStatus === 'Draft' && (
+            {canManage && currentStatus === 'Draft' && (
               <Button 
                 onClick={handleCompute} 
                 disabled={isComputing} 
@@ -132,7 +156,7 @@ export const PayrunDetailPage = () => {
               </Button>
             )}
 
-            {currentStatus === 'Computed' && (
+            {canManage && currentStatus === 'Computed' && (
               <Button 
                 onClick={handleValidate} 
                 disabled={isValidating}
@@ -145,7 +169,7 @@ export const PayrunDetailPage = () => {
               </Button>
             )}
 
-            {currentStatus === 'Validated' && (
+            {canManage && currentStatus === 'Validated' && (
               <div className="flex items-center gap-2">
                 <Button 
                   onClick={handleSendPayslips} 
@@ -170,7 +194,7 @@ export const PayrunDetailPage = () => {
               </div>
             )}
 
-            {currentStatus === 'Paid' && (
+            {canManage && currentStatus === 'Paid' && (
               <Button 
                 onClick={handleSendPayslips} 
                 disabled={isSending}
@@ -225,7 +249,12 @@ export const PayrunDetailPage = () => {
           </div>
           <div>
             <div className="text-[11px] font-semibold uppercase tracking-wider text-text-muted">Total Payslips</div>
-            <div className="text-xl font-bold font-mono text-text-main">{payrun?.employeeCount || 24}</div>
+            <div className="text-xl font-bold font-mono text-text-main">
+              {payslipsList.length > 0 ? payslipsList.length : (payrun?.employeeCount || 0)}
+            </div>
+            {payslipsList.length === 0 && currentStatus === 'Draft' && (
+              <span className="text-[10px] text-accent-amber font-semibold">Scheduled</span>
+            )}
           </div>
         </Card>
 
@@ -302,7 +331,7 @@ export const PayrunDetailPage = () => {
             Employee Payslips Register
           </div>
           <span className="text-xs text-text-muted font-mono">
-            {payrun?.employeeCount || 4} statements
+            {payslipsList.length} {payslipsList.length === 1 ? 'statement' : 'statements'}
           </span>
         </div>
 
@@ -320,37 +349,85 @@ export const PayrunDetailPage = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-border-subtle">
-              {[
-                { id: 1, name: 'Eleanor Vance', empId: 'EMP-001', days: 22, gross: '₹1,20,000', ded: '-₹14,400', net: '₹1,05,600' },
-                { id: 2, name: 'Marcus Chen', empId: 'EMP-002', days: 21, gross: '₹95,000', ded: '-₹11,200', net: '₹83,800' },
-                { id: 3, name: 'Sophia Patel', empId: 'EMP-003', days: 22, gross: '₹85,000', ded: '-₹9,800', net: '₹75,200' },
-                { id: 4, name: 'David Kim', empId: 'EMP-004', days: 20, gross: '₹70,000', ded: '-₹8,100', net: '₹61,900' },
-              ].map(slip => (
-                <tr 
-                  key={slip.id} 
-                  onClick={() => navigate(`/payslips/${slip.id}`)}
-                  className="hover:bg-surface-3/50 cursor-pointer transition-colors group"
-                >
-                  <td className="py-3.5 px-4">
-                    <div className="font-semibold text-text-main group-hover:text-accent-blue transition-colors">
-                      {slip.name}
+              {isLoadingPayslips ? (
+                <tr>
+                  <td colSpan={7} className="py-10 text-center text-text-muted">
+                    <div className="flex items-center justify-center gap-2">
+                      <div className="w-4 h-4 rounded-full border-2 border-accent-blue border-t-transparent animate-spin" />
+                      <span>Loading employee statements...</span>
                     </div>
-                    <div className="text-[11px] font-mono text-text-muted">{slip.empId}</div>
-                  </td>
-                  <td className="py-3.5 px-4 text-center font-mono text-text-secondary">{slip.days}d</td>
-                  <td className="py-3.5 px-4 font-mono font-medium text-text-main">{slip.gross}</td>
-                  <td className="py-3.5 px-4 font-mono text-accent-rose">{slip.ded}</td>
-                  <td className="py-3.5 px-4 font-mono font-bold text-accent-emerald">{slip.net}</td>
-                  <td className="py-3.5 px-4">
-                    <StatusPill status={currentStatus === 'Draft' ? 'Draft' : 'Computed'} />
-                  </td>
-                  <td className="py-3.5 px-4 text-right">
-                    <span className="text-xs text-accent-blue font-medium group-hover:underline">
-                      View Slip →
-                    </span>
                   </td>
                 </tr>
-              ))}
+              ) : payslipsList.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="py-14 text-center text-text-muted">
+                    <div className="max-w-md mx-auto flex flex-col items-center">
+                      <div className="w-12 h-12 rounded-2xl bg-accent-blue/10 text-accent-blue flex items-center justify-center mb-3">
+                        <Play className="w-6 h-6 ml-0.5" />
+                      </div>
+                      <p className="font-semibold text-base text-text-main mb-1">
+                        {currentStatus === 'Draft' 
+                          ? `Payrun Ready for Computation (${payrun?.employeeCount || 0} Employees Assigned)` 
+                          : 'No payslip records generated for this cycle.'}
+                      </p>
+                      <p className="text-xs text-text-muted mb-5 leading-relaxed">
+                        {currentStatus === 'Draft' 
+                          ? 'Click the button below to execute the payroll calculation engine, process attendance & statutory deductions, and populate individual payslips.' 
+                          : 'Please check the salary structure rules and employee contracts.'}
+                      </p>
+                      {canManage && currentStatus === 'Draft' && (
+                        <Button 
+                          onClick={handleCompute} 
+                          disabled={isComputing} 
+                          variant="primary" 
+                          size="md"
+                          className="gap-2 shadow-md hover:shadow-lg transition-all"
+                        >
+                          <Play className="w-4 h-4" />
+                          <span>{isComputing ? 'Running Payroll Engine...' : 'Run Payroll Engine & Calculate Payslips'}</span>
+                        </Button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ) : (
+                payslipsList.map((slip) => {
+                  const empName = slip.employeeName || `${slip.first_name || ''} ${slip.last_name || ''}`.trim() || 'Employee';
+                  const empCode = slip.employeeId || slip.employee_code || 'EMP-001';
+                  const days = slip.worked_days || slip.workedDays || 22;
+                  const gross = slip.grossPayFormatted || `₹${parseFloat(slip.gross || 0).toLocaleString('en-IN')}`;
+                  const ded = `-₹${parseFloat(slip.total_deductions || 0).toLocaleString('en-IN')}`;
+                  const net = slip.netPayFormatted || `₹${parseFloat(slip.net || 0).toLocaleString('en-IN')}`;
+                  const slipStatus = slip.status || currentStatus || 'Computed';
+
+                  return (
+                    <tr 
+                      key={slip.id} 
+                      onClick={() => navigate(`/payslips/${slip.id}`)}
+                      className="hover:bg-surface-3/50 cursor-pointer transition-colors group"
+                    >
+                      <td className="py-3.5 px-4">
+                        <div className="font-semibold text-text-main group-hover:text-accent-blue transition-colors">
+                          {empName}
+                        </div>
+                        <div className="text-[11px] font-mono text-text-muted">{empCode}</div>
+                      </td>
+                      <td className="py-3.5 px-4 text-center font-mono text-text-secondary">{days}d</td>
+                      <td className="py-3.5 px-4 font-mono font-medium text-text-main">{gross}</td>
+                      <td className="py-3.5 px-4 font-mono text-accent-rose">{ded}</td>
+                      <td className="py-3.5 px-4 font-mono font-bold text-accent-emerald">{net}</td>
+                      <td className="py-3.5 px-4">
+                        <StatusPill status={slipStatus} />
+                      </td>
+                      <td className="py-3.5 px-4 text-right">
+                        <span className="text-xs text-accent-blue font-medium group-hover:underline">
+                          View Slip →
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
             </tbody>
           </table>
         </div>

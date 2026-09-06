@@ -28,8 +28,22 @@ async function createPayrun(data, userId) {
     throw AppError.conflict('A payrun already exists for this period and department');
   }
 
+  const employeeIds = data.employee_ids || data.employeeIds || null;
+  let notes = data.notes || '';
+  if (employeeIds && Array.isArray(employeeIds) && employeeIds.length > 0) {
+    notes = JSON.stringify({
+      userNotes: notes,
+      employee_ids: employeeIds,
+    });
+  }
+
   const payrun = await payrunRepo.create({
-    ...data,
+    name: data.name,
+    period_start: data.period_start,
+    period_end: data.period_end,
+    structure_id: data.structure_id,
+    department: data.department,
+    notes,
     state: 'DRAFT',
   });
 
@@ -74,16 +88,31 @@ async function computePayrun(payrunId, userId) {
   }
 
   // Get employees (filter by department if specified)
-  const employees = await employeeRepo.getActiveEmployees(payrun.department);
+  let employees = await employeeRepo.getActiveEmployees(payrun.department);
   if (employees.length === 0) {
     throw AppError.badRequest('No active employees found for this payrun');
   }
 
-  return withTransaction(async (client) => {
-    // Delete existing payslips if recomputing
-    if (payrun.state === 'COMPUTED' || payrun.state === 'VALIDATED') {
-      await payslipRepo.deleteByPayrun(payrunId, client);
+  // Filter by selected employee_ids if stored in payrun notes
+  if (payrun.notes) {
+    try {
+      const parsedNotes = JSON.parse(payrun.notes);
+      if (parsedNotes && Array.isArray(parsedNotes.employee_ids) && parsedNotes.employee_ids.length > 0) {
+        const selectedSet = new Set(parsedNotes.employee_ids);
+        employees = employees.filter((e) => selectedSet.has(e.id));
+      }
+    } catch {
+      // Notes was plain text, do not filter
     }
+  }
+
+  if (employees.length === 0) {
+    throw AppError.badRequest('No matching active employees found for this payrun');
+  }
+
+  return withTransaction(async (client) => {
+    // Clean up any existing payslips for this payrun before computation
+    await payslipRepo.deleteByPayrun(payrunId, client);
 
     const results = { success: [], errors: [], warnings: [] };
 
@@ -104,15 +133,15 @@ async function computePayrun(payrunId, userId) {
           continue;
         }
 
-        // Check for duplicate payslip
+        // Check for duplicate payslip within this payrun
         const hasDup = await payslipRepo.hasDuplicate(
-          employee.id, payrun.period_start, payrun.period_end
+          employee.id, payrun.period_start, payrun.period_end, null, payrunId
         );
         if (hasDup) {
           results.warnings.push({
             employee_id: employee.id,
             name: `${employee.first_name} ${employee.last_name}`,
-            issue: 'Duplicate payslip exists — skipped',
+            issue: 'Duplicate payslip exists in this payrun — skipped',
           });
           continue;
         }
@@ -206,6 +235,9 @@ async function computePayrun(payrunId, userId) {
       });
     } else if (results.errors.length > 0) {
       throw AppError.badRequest('No payslips could be computed. Check errors.', results.errors);
+    } else {
+      const summaryReason = results.warnings.map(w => `${w.name}: ${w.issue}`).slice(0, 3).join('; ');
+      throw AppError.badRequest(`No payslips could be computed: ${summaryReason || 'All employees skipped.'}`, results.warnings);
     }
 
     // Invalidate dashboard cache
